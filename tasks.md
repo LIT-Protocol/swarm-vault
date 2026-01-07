@@ -1,59 +1,59 @@
 # Swarm Vault - Tasks
 
-## Phase 1: Project Setup
+## Phase 1: Project Setup [COMPLETED]
 
 ### 1.1 Monorepo Initialization
-- [ ] Initialize pnpm workspace
-- [ ] Create `packages/client` (Vite + React + TypeScript)
-- [ ] Create `packages/server` (Express + TypeScript)
-- [ ] Create `packages/shared` (shared types and utilities)
-- [ ] Create `packages/lit-actions` (Lit Action code)
-- [ ] Configure TypeScript for all packages
-- [ ] Set up path aliases and package references
-- [ ] Create `.env.example` with all required variables
+- [x] Initialize pnpm workspace
+- [x] Create `packages/client` (Vite + React + TypeScript)
+- [x] Create `packages/server` (Express + TypeScript)
+- [x] Create `packages/shared` (shared types and utilities)
+- [x] Create `packages/lit-actions` (Lit Action code)
+- [x] Configure TypeScript for all packages
+- [x] Set up path aliases and package references
+- [x] Create `.env.example` with all required variables
 
 ### 1.2 Database Setup
-- [ ] Set up Prisma in root
-- [ ] Create initial schema (User, Swarm, SwarmMembership, Transaction, TransactionTarget)
-- [ ] Create initial migration
-- [ ] Add seed script for development
+- [x] Set up Prisma in root
+- [x] Create initial schema (User, Swarm, SwarmMembership, Transaction, TransactionTarget)
+- [x] Create initial migration
+- [x] Add seed script for development
 
 ### 1.3 Server Boilerplate
-- [ ] Set up Express with TypeScript
-- [ ] Add middleware (cors, json, error handling)
-- [ ] Set up environment variable loading (dotenv)
-- [ ] Create health check endpoint
-- [ ] Set up Prisma client singleton
-- [ ] Add request logging (morgan or similar)
+- [x] Set up Express with TypeScript
+- [x] Add middleware (cors, json, error handling)
+- [x] Set up environment variable loading (dotenv)
+- [x] Create health check endpoint
+- [x] Set up Prisma client singleton
+- [x] Add request logging (morgan or similar)
 
 ### 1.4 Client Boilerplate
-- [ ] Set up Vite + React + TypeScript
-- [ ] Install and configure wagmi + viem
-- [ ] Set up React Router
-- [ ] Create basic layout components
-- [ ] Configure Tailwind CSS (or preferred styling)
-- [ ] Set up API client (fetch wrapper with auth)
+- [x] Set up Vite + React + TypeScript
+- [x] Install and configure wagmi + viem
+- [x] Set up React Router
+- [x] Create basic layout components
+- [x] Configure Tailwind CSS (or preferred styling)
+- [x] Set up API client (fetch wrapper with auth)
 
 ---
 
-## Phase 2: Authentication
+## Phase 2: Authentication [COMPLETED]
 
 ### 2.1 Backend Auth
-- [ ] Create SIWE nonce endpoint (`POST /api/auth/nonce`)
-- [ ] Create login endpoint (`POST /api/auth/login`)
+- [x] Create SIWE nonce endpoint (`POST /api/auth/nonce`)
+- [x] Create login endpoint (`POST /api/auth/login`)
   - Verify SIWE signature
   - Create user if not exists
   - Generate and return JWT
-- [ ] Create auth middleware (verify JWT)
-- [ ] Create `GET /api/auth/me` endpoint
+- [x] Create auth middleware (verify JWT)
+- [x] Create `GET /api/auth/me` endpoint
 
 ### 2.2 Frontend Auth
-- [ ] Create ConnectWallet component using wagmi
-- [ ] Implement SIWE signing flow
-- [ ] Store JWT in localStorage/memory
-- [ ] Create auth context/provider
-- [ ] Add auth state to API client
-- [ ] Create protected route wrapper
+- [x] Create ConnectWallet component using wagmi
+- [x] Implement SIWE signing flow
+- [x] Store JWT in localStorage/memory
+- [x] Create auth context/provider
+- [x] Add auth state to API client
+- [x] Create protected route wrapper
 
 ---
 

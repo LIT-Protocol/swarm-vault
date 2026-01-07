@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  walletAddress String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  managedSwarms SwarmManager[]
+  memberships   SwarmMembership[]
+}
+
+model Swarm {
+  id              String   @id @default(uuid())
+  name            String
+  description     String
+  socialUrl       String?
+  litPkpPublicKey String
+  litPkpTokenId   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  managers     SwarmManager[]
+  memberships  SwarmMembership[]
+  transactions Transaction[]
+}
+
+model SwarmManager {
+  id        String   @id @default(uuid())
+  swarmId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  swarm Swarm @relation(fields: [swarmId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([swarmId, userId])
+}
+
+enum MembershipStatus {
+  ACTIVE
+  LEFT
+}
+
+model SwarmMembership {
+  id                 String           @id @default(uuid())
+  swarmId            String
+  userId             String
+  agentWalletAddress String
+  status             MembershipStatus @default(ACTIVE)
+  joinedAt           DateTime         @default(now())
+
+  // Relations
+  swarm              Swarm               @relation(fields: [swarmId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionTargets TransactionTarget[]
+
+  @@unique([swarmId, userId])
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Transaction {
+  id        String            @id @default(uuid())
+  swarmId   String
+  status    TransactionStatus @default(PENDING)
+  template  Json
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  // Relations
+  swarm   Swarm               @relation(fields: [swarmId], references: [id], onDelete: Cascade)
+  targets TransactionTarget[]
+}
+
+enum TransactionTargetStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  FAILED
+}
+
+model TransactionTarget {
+  id             String                  @id @default(uuid())
+  transactionId  String
+  membershipId   String
+  resolvedTxData Json
+  userOpHash     String?
+  txHash         String?
+  status         TransactionTargetStatus @default(PENDING)
+  error          String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  // Relations
+  transaction Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  membership  SwarmMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+}

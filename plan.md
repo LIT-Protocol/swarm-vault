@@ -294,3 +294,96 @@ JWT_SECRET=...
 3. **Spending Limits**: Allow users to set per-transaction or daily limits
 4. **Multi-sig Manager**: Require multiple managers to approve transactions
 5. **Fee Structure**: Take percentage of profits or flat fee
+
+---
+
+## Implementation Notes & Learnings
+
+### Phase 1 Learnings (Project Setup)
+
+**Completed:** 2024-01-07
+
+#### Structure Decisions
+
+1. **Monorepo with pnpm workspaces**: Chose pnpm for better disk space efficiency and stricter dependency resolution. The `workspace:*` protocol ensures packages always use local versions.
+
+2. **TypeScript Configuration**: Created a `tsconfig.base.json` at root with shared settings. Each package extends this and adds package-specific options:
+   - Client uses `noEmit: true` since Vite handles bundling
+   - Server and shared output to `dist/` directories
+   - Lit Actions use `noEmit: true` since esbuild handles bundling
+
+3. **Path Aliases**: Client uses `@/*` path alias via Vite config for cleaner imports. Server uses direct imports since Express doesn't need path aliasing.
+
+4. **ESM Throughout**: All packages use `"type": "module"` for native ES modules. This requires:
+   - `.js` extensions in import paths for shared types
+   - `tsx` for running TypeScript server code directly
+
+#### Database Schema Notes
+
+1. **SwarmManager Junction Table**: Added a separate `SwarmManager` table (not in original plan) to support multiple managers per swarm in the future. This provides flexibility without schema changes later.
+
+2. **Enum Types**: Used Prisma enums for status fields (`MembershipStatus`, `TransactionStatus`, `TransactionTargetStatus`) for type safety and database-level validation.
+
+3. **Cascade Deletes**: Added `onDelete: Cascade` to all foreign key relations so deleting a swarm cleans up memberships and transactions automatically.
+
+#### Key Files Created
+
+- `packages/shared/src/types/index.ts` - All shared TypeScript types and Zod schemas
+- `packages/shared/src/constants/index.ts` - Chain IDs, contract addresses, API routes
+- `packages/shared/src/utils/index.ts` - Address formatting, token utilities
+- `packages/server/src/lib/prisma.ts` - Singleton Prisma client with dev HMR support
+- `packages/server/src/lib/env.ts` - Zod-validated environment variables
+- `packages/server/src/middleware/errorHandler.ts` - Centralized error handling with Prisma/Zod support
+- `packages/client/src/lib/wagmi.ts` - wagmi v2 config for Base Sepolia/Mainnet
+- `packages/client/src/lib/api.ts` - Type-safe API client with JWT support
+
+#### Next Steps for Phase 2
+
+1. Implement SIWE authentication flow on server
+2. Create auth context/provider on client
+3. Add JWT middleware to protect routes
+4. Store/refresh JWT tokens properly
+
+### Phase 2 Learnings (Authentication)
+
+**Completed:** 2025-01-07
+
+#### SIWE Implementation
+
+1. **Nonce Management**: Used in-memory Map for nonce storage with 5-minute expiration. In production, Redis or database storage is recommended for distributed systems. Nonces are tied to wallet addresses and automatically cleaned up via setInterval.
+
+2. **SIWE Message Structure**: Created SIWE messages with domain, address, statement, uri, version, chainId, and nonce. The `prepareMessage()` method formats it for signing.
+
+3. **Signature Verification**: Used siwe v2's `verify()` method which returns verified message data. Handles both valid and invalid signatures gracefully.
+
+#### Auth Middleware
+
+1. **Two Middleware Variants**: Created `authMiddleware` (required auth) and `optionalAuthMiddleware` (auth if present) to support different endpoint needs.
+
+2. **Express Type Extension**: Extended Express Request type globally to include `user?: JWTPayload` for TypeScript support.
+
+3. **JWT Payload**: Stored minimal data (userId, walletAddress) in JWT to reduce token size while providing necessary identification.
+
+#### Frontend Auth Context
+
+1. **Three-State Auth Flow**: Implemented distinct states: (1) Not connected, (2) Connected but not signed in, (3) Fully authenticated. The Layout component shows appropriate UI for each state.
+
+2. **Auto-Logout on Disconnect**: useEffect watches `isConnected` from wagmi and clears auth state when wallet disconnects.
+
+3. **Token Persistence**: JWT stored in localStorage with key `swarm_vault_token`. On mount, attempts to restore session by calling `/api/auth/me`.
+
+4. **API Client Integration**: The api client singleton has `setToken()` method that attaches Bearer token to all requests automatically.
+
+#### Key Files Created
+
+- `packages/server/src/routes/auth.ts` - SIWE nonce and login endpoints
+- `packages/server/src/middleware/auth.ts` - JWT verification middleware
+- `packages/client/src/contexts/AuthContext.tsx` - React context for auth state
+- `packages/client/src/components/ProtectedRoute.tsx` - Route guard component
+
+#### Next Steps for Phase 3
+
+1. Install Lit Protocol SDK and create client singleton
+2. Implement PKP minting for swarm creation
+3. Create Lit Action for signing transactions
+4. Test Lit Action execution in isolation
