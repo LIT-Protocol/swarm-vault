@@ -80,23 +80,23 @@
 
 ---
 
-## Phase 4: ZeroDev Integration
+## Phase 4: ZeroDev Integration [COMPLETED]
 
 ### 4.1 ZeroDev Client Setup
-- [ ] Install ZeroDev SDK (`@zerodev/sdk`, `@zerodev/ecdsa-validator`)
-- [ ] Create ZeroDev client factory with project ID from env
-- [ ] Implement bundler URL derivation from project ID + chain ID
+- [x] Install ZeroDev SDK (`@zerodev/sdk`, `@zerodev/ecdsa-validator`)
+- [x] Create ZeroDev client factory with project ID from env
+- [x] Implement bundler URL derivation from project ID + chain ID
 
 ### 4.2 Smart Wallet Creation
-- [ ] Create function to compute counterfactual address for user
-- [ ] Create function to add PKP as session signer
-- [ ] Test wallet creation flow
+- [x] Create function to compute counterfactual address for user
+- [x] Create function to add PKP as session signer
+- [x] Test wallet creation flow
 
 ### 4.3 Transaction Execution
-- [ ] Create function to build UserOperation
-- [ ] Create function to sign UserOp with Lit PKP
-- [ ] Create function to submit UserOp to bundler
-- [ ] Handle gas estimation and paymaster
+- [x] Create function to build UserOperation
+- [x] Create function to sign UserOp with Lit PKP
+- [x] Create function to submit UserOp to bundler
+- [x] Handle gas estimation and paymaster
 
 ---
 

@@ -430,3 +430,78 @@ JWT_SECRET=...
 2. Create function to compute counterfactual wallet addresses
 3. Implement session key registration for PKP signers
 4. Connect Lit PKP signing to ZeroDev UserOperation flow
+
+### Phase 4 Learnings (ZeroDev Integration)
+
+**Completed:** 2025-01-07
+
+#### ZeroDev SDK Installation
+
+1. **Package Selection**: Used `@zerodev/sdk`, `@zerodev/ecdsa-validator`, and `permissionless` packages. The ZeroDev SDK is built on top of permissionless.js which provides account abstraction primitives.
+
+2. **Kernel Version**: Using `KERNEL_V3_1` (Kernel v3.1) which is the latest stable version. This provides modular plugin architecture for validators and permission systems.
+
+3. **Entry Point**: Using EntryPoint v0.7 (`getEntryPoint("0.7")`) which is the latest ERC-4337 specification.
+
+#### Bundler & Paymaster Configuration
+
+1. **RPC URL Format**: ZeroDev v3 provides a unified RPC endpoint:
+   - Format: `https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}`
+   - Single URL for bundler, paymaster, and RPC operations
+
+2. **Paymaster Integration**: Created `createZeroDevPaymasterClient` for sponsored transactions. The paymaster is configured in the kernel client's `paymaster.getPaymasterData` callback.
+
+3. **Client Architecture**: Three client types work together:
+   - `PublicClient` - for reading blockchain state (required for account creation)
+   - `KernelAccountClient` - for smart account operations (includes `client` param pointing to PublicClient)
+   - `PaymasterClient` - for gas sponsorship
+
+4. **UserOperation Submission**: Use `sendUserOperation` with `encodeCalls` instead of `sendTransaction`:
+   ```typescript
+   const callData = await kernelClient.account.encodeCalls([{ to, value, data }]);
+   const userOpHash = await kernelClient.sendUserOperation({ callData });
+   ```
+
+5. **Waiting for Confirmation**: Use `waitForUserOperationReceipt` on the kernel client:
+   ```typescript
+   await kernelClient.waitForUserOperationReceipt({ hash: userOpHash, timeout: 15000 });
+   ```
+
+#### Smart Wallet Address Computation
+
+1. **Counterfactual Addresses**: Wallet addresses are deterministically computed from the owner's EOA address and an optional index. The wallet doesn't need to be deployed to know its address.
+
+2. **ECDSA Validator**: Using `signerToEcdsaValidator` to create validators from EOA signers. This establishes the ownership relationship.
+
+3. **Index Parameter**: The `index` parameter (default `0n`) allows creating multiple wallets per user if needed.
+
+#### Type Compatibility
+
+1. **TypeScript Challenges**: The ZeroDev SDK has complex generic types that sometimes require explicit type annotations or `as any` casts to satisfy TypeScript's strict checks.
+
+2. **KernelClient Type**: Created a type alias `KernelClient = Awaited<ReturnType<typeof createKernelAccountClient<any, any, any>>>` to handle complex inferred types.
+
+3. **Account Parameter**: Some client methods require the `account` parameter to be explicitly passed even when the client already has it attached, depending on the generic type inference.
+
+#### Key Files Created
+
+- `packages/server/src/lib/zerodev.ts` - ZeroDev client setup, wallet creation, UserOp building and submission
+
+#### Key Functions
+
+- `getBundlerUrl()` / `getPaymasterUrl()` - Derive RPC URLs from project ID
+- `computeSmartWalletAddress()` - Compute counterfactual address for a user
+- `createUserSmartAccount()` - Create a Kernel smart account
+- `createAccountClient()` - Create a client for sending transactions
+- `buildUserOperation()` - Prepare a UserOperation
+- `signUserOpWithPKP()` - Sign UserOp using Lit PKP
+- `submitUserOperation()` - Submit UserOp to bundler
+- `executeBatchTransactions()` - Execute multiple transactions atomically
+- `waitForUserOpReceipt()` - Poll for transaction confirmation
+
+#### Next Steps for Phase 5
+
+1. Create swarm management API endpoints (list, create, get)
+2. Integrate PKP minting into swarm creation flow
+3. Build manager dashboard UI for swarm management
+4. Implement member listing with agent wallet addresses
