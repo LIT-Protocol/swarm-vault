@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 
-export const healthRouter = Router();
+const router = Router();
+export const healthRouter: Router = router;
 
-healthRouter.get("/", async (_req, res) => {
+router.get("/", async (_req, res) => {
   try {
     // Check database connection
     await prisma.$queryRaw`SELECT 1`;

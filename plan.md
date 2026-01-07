@@ -387,3 +387,46 @@ JWT_SECRET=...
 2. Implement PKP minting for swarm creation
 3. Create Lit Action for signing transactions
 4. Test Lit Action execution in isolation
+
+### Phase 3 Learnings (Lit Protocol Integration)
+
+**Completed:** 2025-01-07
+
+#### Lit SDK Installation
+
+1. **Package Selection**: Used `@lit-protocol/lit-node-client`, `@lit-protocol/contracts-sdk`, `@lit-protocol/auth-helpers`, and `@lit-protocol/constants` for comprehensive Lit Protocol integration.
+
+2. **Network Configuration**: Updated environment variables to use Lit's Datil networks (`datil-dev`, `datil-test`, `datil`) instead of the deprecated `naga-dev`. The network names map to `LIT_NETWORK.DatilDev`, etc.
+
+3. **Type Compatibility Issues**: The Lit SDK has some TypeScript type incompatibilities between versions. Needed to use `as any` type assertions for `litNetwork` and `network` parameters in `LitNodeClient` and `LitContracts` constructors.
+
+4. **Ethers vs Viem**: The Lit SDK's `generateAuthSig` function expects an ethers `Wallet` or `Signer`, not a viem `WalletClient`. Added `ethers` package to server dependencies alongside existing `viem` for this purpose.
+
+#### Lit Client Architecture
+
+1. **Singleton Pattern**: Created singleton instances for both `LitNodeClient` and `LitContracts` to avoid reconnecting on each request. The client checks `litNodeClient.ready` before reusing.
+
+2. **Session Management**: Implemented `getSessionSigs()` function that generates SIWE-based authentication and obtains session signatures for PKP signing and Lit Action execution. Sessions expire after 1 hour.
+
+3. **Subsidized Operations**: All Lit operations (PKP minting, action execution) use a subsidizing wallet from `LIT_PRIVATE_KEY` environment variable. This wallet pays for gas on the Lit network.
+
+#### Lit Action Development
+
+1. **Bundling with esbuild**: Lit Actions must be bundled as IIFE (Immediately Invoked Function Expression) for execution on the Lit network. Used esbuild with `--format=iife --platform=neutral` flags.
+
+2. **Lit Action Interface**: Actions receive parameters via global `jsParams` and return results via `Lit.Actions.setResponse()`. Signatures are collected using `Lit.Actions.signEcdsa()` with unique `sigName` identifiers.
+
+3. **UserOperation Signing**: The Lit Action accepts an array of UserOperation hashes and signs each with the PKP. Signatures are returned with names `sig_0`, `sig_1`, etc., accessible in the `result.signatures` object.
+
+#### Key Files Created
+
+- `packages/server/src/lib/lit.ts` - Lit client singleton, PKP minting, session management
+- `packages/server/src/lib/litActions.ts` - Helper to load and execute bundled Lit Actions
+- `packages/lit-actions/src/signTransaction.ts` - Lit Action for signing UserOperations
+
+#### Next Steps for Phase 4
+
+1. Install ZeroDev SDK and configure bundler client
+2. Create function to compute counterfactual wallet addresses
+3. Implement session key registration for PKP signers
+4. Connect Lit PKP signing to ZeroDev UserOperation flow

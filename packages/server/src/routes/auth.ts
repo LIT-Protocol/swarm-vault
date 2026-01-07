@@ -167,4 +167,4 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-export const authRouter = router;
+export const authRouter: Router = router;

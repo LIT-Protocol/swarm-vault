@@ -47,7 +47,7 @@ export function authMiddleware(
 
 export function optionalAuthMiddleware(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   const authHeader = req.headers.authorization;

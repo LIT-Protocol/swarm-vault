@@ -2,8 +2,8 @@ import { z } from "zod";
 
 const envSchema = z.object({
   DATABASE_URL: z.string(),
-  LIT_NETWORK: z.string().default("naga-dev"),
-  LIT_PRIVATE_KEY: z.string().optional(),
+  LIT_NETWORK: z.enum(["datil-dev", "datil-test", "datil"]).default("datil-dev"),
+  LIT_PRIVATE_KEY: z.string().startsWith("0x").optional(),
   ZERODEV_PROJECT_ID: z.string().optional(),
   CHAIN_ID: z.coerce.number().default(84532),
   ALCHEMY_API_KEY: z.string().optional(),
