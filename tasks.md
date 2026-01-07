@@ -155,33 +155,67 @@
 
 ---
 
-## Phase 7: Transaction Execution
+## Phase 7: Transaction Templating & Execution
 
-### 7.1 Backend Transaction Flow
+### 7.1 Template Engine (packages/shared)
+- [ ] Define template placeholder types
+- [ ] Create template parser to extract placeholders from args
+- [ ] Create template resolver function:
+  - `{{walletAddress}}` - agent wallet address
+  - `{{ethBalance}}` - ETH balance in wei
+  - `{{tokenBalance:0x...}}` - ERC20 token balance
+  - `{{percentage:ethBalance:N}}` - N% of ETH balance
+  - `{{percentage:tokenBalance:0x...:N}}` - N% of token balance
+  - `{{blockTimestamp}}` - current block timestamp
+  - `{{deadline:N}}` - timestamp + N seconds
+  - `{{slippage:amount:N}}` - amount minus N% (for minAmountOut)
+- [ ] Support ABI mode (encodeFunctionData with viem)
+- [ ] Support raw calldata mode (hex string with placeholder substitution)
+- [ ] Add validation for template structure
+- [ ] Unit tests for template resolution
+
+### 7.2 Backend Transaction Flow
 - [ ] `POST /api/swarms/:id/transactions` - Execute transaction
   - Validate manager owns swarm
-  - Create Transaction record
+  - Validate template structure
+  - Create Transaction record with template
   - Get all active members
+  - For each member:
+    - Fetch balances via Alchemy
+    - Resolve template placeholders
+    - Encode calldata
+    - Create TransactionTarget with resolved data
   - Call Lit Action to sign for all wallets
   - Submit UserOps to bundler
-  - Create TransactionTarget records
   - Return transaction ID
 - [ ] `GET /api/swarms/:id/transactions` - List swarm transactions
 - [ ] `GET /api/transactions/:id` - Get transaction status/details
 
-### 7.2 Transaction Status Updates
+### 7.3 Transaction Status Updates
 - [ ] Poll bundler for UserOp status
 - [ ] Update TransactionTarget status on confirmation
 - [ ] Update Transaction status when all targets complete
 
-### 7.3 Manager Transaction UI
-- [ ] Transaction builder form
+### 7.4 Manager Transaction UI
+- [ ] Transaction template builder form:
+  - Mode toggle: ABI mode vs Raw calldata mode
   - Contract address input
-  - Function selector / raw data input
-  - Value input (ETH)
-  - Preview before submit
+  - **ABI Mode:**
+    - ABI paste/upload (JSON)
+    - Function selector dropdown (populated from ABI)
+    - Dynamic argument inputs based on function signature
+  - **Raw Calldata Mode:**
+    - Hex data textarea with placeholder support
+  - Placeholder insertion buttons (wallet address, balance, deadline, slippage, etc.)
+  - ETH value input (with placeholder support)
+- [ ] Template preview showing resolved values for sample wallet
 - [ ] Transaction history list
 - [ ] Transaction detail view with per-member status
+
+### 7.5 Common ABI Library (Future Enhancement)
+- [ ] Store common contract ABIs (Uniswap, ERC20, etc.)
+- [ ] Quick-select for common operations
+- [ ] Pre-built templates for common swaps
 
 ---
 

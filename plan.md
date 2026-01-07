@@ -8,7 +8,7 @@ Swarm Vault is a platform that enables managers to execute transactions on behal
 
 ### Tech Stack
 
-- **Frontend**: Vite + React + TypeScript
+- **Frontend**: Vite + React + TypeScript + TailwindCSS
 - **Backend**: Express + TypeScript
 - **Database**: PostgreSQL + Prisma
 - **Monorepo**: pnpm workspaces
@@ -44,6 +44,7 @@ swarm-vault/
 ### Swarm
 
 A swarm is a group created by a manager. Each swarm has:
+
 - Name, description, social media URL
 - A Lit Protocol PKP (owned by the manager)
 - Multiple user memberships
@@ -51,9 +52,69 @@ A swarm is a group created by a manager. Each swarm has:
 ### Agent Wallet
 
 Each user's membership in a swarm creates a ZeroDev smart wallet:
+
 - **Owner**: User's MetaMask EOA (can always withdraw manually)
 - **Session Signer**: Swarm's Lit PKP (allows manager to execute transactions)
 - Uses counterfactual deployment (only deployed on first transaction)
+
+### Transaction Templating
+
+Since swarm transactions execute across multiple wallets with different balances, we need a templating system to customize transaction parameters per wallet.
+
+#### Template Placeholders
+
+| Placeholder | Description | Example Output |
+|-------------|-------------|----------------|
+| `{{walletAddress}}` | Agent wallet address | `0x1234...abcd` |
+| `{{ethBalance}}` | Current ETH balance (wei) | `1000000000000000000` |
+| `{{tokenBalance:0xAddress}}` | ERC20 token balance | `500000000` |
+| `{{percentage:ethBalance:50}}` | 50% of ETH balance | `500000000000000000` |
+| `{{percentage:tokenBalance:0xAddr:100}}` | 100% of token balance | `500000000` |
+| `{{blockTimestamp}}` | Current block timestamp | `1704567890` |
+| `{{deadline:300}}` | Timestamp + N seconds (for swap deadlines) | `1704568190` |
+| `{{slippage:amount:5}}` | Amount minus 5% (for minAmountOut) | `950000000` |
+
+#### Transaction Template Structure
+
+**ABI Mode** (recommended):
+1. **Contract address** - target contract
+2. **ABI** - contract ABI (full or just the function)
+3. **Function name** - function to call
+4. **Arguments** - array with template placeholders
+5. **Value** - ETH to send (can be templated)
+
+**Raw Calldata Mode** (advanced):
+1. **Contract address** - target contract
+2. **Data** - hex-encoded calldata (can include placeholders)
+3. **Value** - ETH to send (can be templated)
+
+#### Example: Swap all USDC for ETH
+
+```json
+{
+  "contractAddress": "0x2626664c2603336E57B271c5C0b26F421741e481",
+  "abi": [{"name": "exactInputSingle", "type": "function", ...}],
+  "functionName": "exactInputSingle",
+  "args": [{
+    "tokenIn": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "tokenOut": "0x4200000000000000000000000000000000000006",
+    "fee": 3000,
+    "recipient": "{{walletAddress}}",
+    "amountIn": "{{percentage:tokenBalance:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913:100}}",
+    "amountOutMinimum": 0,
+    "sqrtPriceLimitX96": 0
+  }],
+  "value": "0"
+}
+```
+
+#### Pre-built Templates (Future)
+
+Common operations as one-click templates:
+- **ERC20 Transfer**: Send tokens to an address
+- **Uniswap Swap**: Swap token A for token B
+- **Wrap/Unwrap ETH**: Convert ETH ↔ WETH
+- **Approve Token**: Approve spender for token
 
 ## Data Model
 
@@ -88,9 +149,8 @@ SwarmMembership
 Transaction
 ├── id (uuid)
 ├── swarmId (fk -> Swarm)
-├── txHash (string, optional) - null until confirmed
-├── status (pending, submitted, confirmed, failed)
-├── txData (json) - raw transaction data
+├── status (pending, processing, completed, failed)
+├── template (json) - transaction template with placeholders
 ├── createdAt
 └── updatedAt
 
@@ -98,7 +158,9 @@ TransactionTarget
 ├── id (uuid)
 ├── transactionId (fk -> Transaction)
 ├── membershipId (fk -> SwarmMembership)
-├── txHash (string, optional)
+├── resolvedTxData (json) - template with placeholders resolved for this wallet
+├── userOpHash (string, optional) - ZeroDev UserOperation hash
+├── txHash (string, optional) - on-chain transaction hash
 ├── status (pending, submitted, confirmed, failed)
 ├── error (text, optional)
 ```
@@ -131,16 +193,23 @@ TransactionTarget
 
 ### 4. Manager Executes Swarm Transaction
 
-1. Manager constructs transaction (to, value, data) in dashboard
-2. Manager submits to backend API
-3. Backend creates Transaction record
-4. Backend calls Lit Action with:
-   - Transaction data
-   - List of all member agent wallet addresses
+1. Manager constructs transaction template in dashboard:
+   - Selects contract address
+   - Pastes ABI or selects from common ABIs
+   - Chooses function and fills arguments with placeholders
+2. Manager submits template to backend API
+3. Backend creates Transaction record with template
+4. For each swarm member:
+   a. Fetch current balances via Alchemy
+   b. Resolve template placeholders (walletAddress, balances, percentages)
+   c. Encode transaction calldata using viem
+   d. Create TransactionTarget with resolved data
+5. Backend calls Lit Action with:
+   - Array of resolved transactions (one per wallet)
    - PKP public key
-5. Lit Action signs UserOperations for each wallet
-6. Backend submits UserOperations to ZeroDev bundler
-7. Backend updates transaction status as confirmations arrive
+6. Lit Action signs UserOperations for each wallet
+7. Backend submits UserOperations to ZeroDev bundler
+8. Backend polls for confirmations and updates TransactionTarget status
 
 ### 5. User Views Balance
 
@@ -159,27 +228,32 @@ TransactionTarget
 ## API Endpoints
 
 ### Auth
+
 - `POST /api/auth/nonce` - Get SIWE nonce
 - `POST /api/auth/login` - Verify signature, return JWT
 - `GET /api/auth/me` - Get current user
 
 ### Swarms
+
 - `GET /api/swarms` - List all public swarms
 - `POST /api/swarms` - Create new swarm (manager)
 - `GET /api/swarms/:id` - Get swarm details
 - `GET /api/swarms/:id/members` - Get swarm members
 
 ### Memberships
+
 - `GET /api/memberships` - Get user's memberships
 - `POST /api/swarms/:id/join` - Join a swarm
 - `GET /api/memberships/:id` - Get membership details
 
 ### Transactions (Manager)
+
 - `POST /api/swarms/:id/transactions` - Execute swarm transaction
 - `GET /api/swarms/:id/transactions` - List swarm transactions
 - `GET /api/transactions/:id` - Get transaction status
 
 ### Balances
+
 - `GET /api/memberships/:id/balance` - Get agent wallet balance
 
 ## Environment Variables
