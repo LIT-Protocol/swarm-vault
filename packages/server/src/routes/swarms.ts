@@ -91,6 +91,7 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
         socialUrl,
         litPkpPublicKey: pkp.publicKey,
         litPkpTokenId: pkp.tokenId,
+        litPkpEthAddress: pkp.ethAddress,
         managers: {
           create: {
             userId: req.user!.userId,
@@ -186,6 +187,8 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
         description: swarm.description,
         socialUrl: swarm.socialUrl,
         litPkpPublicKey: isManager ? swarm.litPkpPublicKey : undefined,
+        // PKP ETH address is needed by authenticated users to create their agent wallet
+        litPkpEthAddress: req.user ? swarm.litPkpEthAddress : undefined,
         createdAt: swarm.createdAt,
         updatedAt: swarm.updatedAt,
         managers: swarm.managers.map((m) => ({

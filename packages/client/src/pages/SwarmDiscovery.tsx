@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useWalletClient } from "wagmi";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import { createAgentWallet, swarmIdToIndex } from "../lib/smartWallet";
 
 interface SwarmListItem {
   id: string;
@@ -13,6 +15,11 @@ interface SwarmListItem {
   managers: { id: string; walletAddress: string }[];
   memberCount: number;
   isManager: boolean;
+}
+
+interface SwarmDetail {
+  id: string;
+  litPkpEthAddress?: string;
 }
 
 interface MembershipListItem {
@@ -28,12 +35,14 @@ interface JoinResult {
 
 export default function SwarmDiscovery() {
   const navigate = useNavigate();
+  const { data: walletClient } = useWalletClient();
   const [swarms, setSwarms] = useState<SwarmListItem[]>([]);
   const [memberships, setMemberships] = useState<MembershipListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [joiningSwarmId, setJoiningSwarmId] = useState<string | null>(null);
+  const [joinStatus, setJoinStatus] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -67,10 +76,39 @@ export default function SwarmDiscovery() {
   }, [isAuthenticated]);
 
   const handleJoin = async (swarmId: string) => {
+    if (!walletClient) {
+      setError("Wallet not connected");
+      return;
+    }
+
     try {
       setJoiningSwarmId(swarmId);
+      setJoinStatus("Getting swarm details...");
       setError(null);
-      const result = await api.post<JoinResult>(`/api/swarms/${swarmId}/join`);
+
+      // Step 1: Get swarm details to get the PKP ETH address
+      const swarmDetail = await api.get<SwarmDetail>(`/api/swarms/${swarmId}`);
+
+      if (!swarmDetail.litPkpEthAddress) {
+        throw new Error("Swarm PKP address not available");
+      }
+
+      // Step 2: Create the agent wallet on the client side
+      setJoinStatus("Creating your agent wallet...");
+      console.log("Creating agent wallet with PKP:", swarmDetail.litPkpEthAddress);
+
+      const { agentWalletAddress, sessionKeyApproval } = await createAgentWallet({
+        walletProvider: walletClient,
+        pkpEthAddress: swarmDetail.litPkpEthAddress,
+        index: swarmIdToIndex(swarmId),
+      });
+
+      // Step 3: Send the wallet info to the backend
+      setJoinStatus("Completing membership...");
+      const result = await api.post<JoinResult>(`/api/swarms/${swarmId}/join`, {
+        agentWalletAddress,
+        sessionKeyApproval,
+      });
 
       // Update memberships list
       setMemberships((prev) => [
@@ -88,9 +126,11 @@ export default function SwarmDiscovery() {
       // Navigate to the membership detail page
       navigate(`/my-swarms/${result.id}`);
     } catch (err) {
+      console.error("Failed to join swarm:", err);
       setError(err instanceof Error ? err.message : "Failed to join swarm");
     } finally {
       setJoiningSwarmId(null);
+      setJoinStatus(null);
     }
   };
 
@@ -223,10 +263,13 @@ export default function SwarmDiscovery() {
                     ) : (
                       <button
                         onClick={() => handleJoin(swarm.id)}
-                        disabled={joiningSwarmId === swarm.id}
+                        disabled={joiningSwarmId === swarm.id || !walletClient}
                         className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        title={!walletClient ? "Connect wallet first" : undefined}
                       >
-                        {joiningSwarmId === swarm.id ? "Joining..." : "Join"}
+                        {joiningSwarmId === swarm.id
+                          ? joinStatus || "Joining..."
+                          : "Join"}
                       </button>
                     )}
                   </>

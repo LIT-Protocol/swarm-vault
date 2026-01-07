@@ -602,9 +602,59 @@ JWT_SECRET=...
 - `packages/client/src/pages/SwarmDiscovery.tsx` - Enhanced with join functionality
 - `packages/client/src/components/Layout.tsx` - Added navigation links
 
+#### Phase 6 Fixes (Smart Wallet Architecture)
+
+**Issue:** Initial implementation tried to create smart wallets server-side, but ZeroDev requires the user's wallet to sign the validator creation.
+
+**Solution:** Moved smart wallet creation to client-side:
+
+1. **Client creates the kernel account:**
+   - Uses `signerToEcdsaValidator` with user's wallet (wagmi provider) as owner
+   - Uses `addressToEmptyAccount` + `toECDSASigner` for PKP address (no private key needed)
+   - Creates `toPermissionValidator` with `toSudoPolicy` for full PKP permissions
+   - Combines into `createKernelAccount` with sudo (user) and regular (PKP) validators
+
+2. **Client serializes the approval:**
+   - `serializePermissionAccount(kernelAccount)` creates a string that backend can use
+   - This approval allows the backend to reconstruct the account for PKP signing
+
+3. **Backend stores and uses approval:**
+   - Membership stores `sessionKeyApproval` in database
+   - During transaction execution, backend uses `deserializePermissionAccount` with PKP signer
+
+**Key Code Pattern (Client):**
+```typescript
+// Create empty account for PKP (we only need the address)
+const emptyAccount = addressToEmptyAccount(pkpAddress);
+const pkpSigner = await toECDSASigner({ signer: emptyAccount });
+
+// Create permission validator with sudo policy
+const permissionPlugin = await toPermissionValidator(publicClient, {
+  signer: pkpSigner,
+  policies: [toSudoPolicy({})],
+  ...
+});
+
+// Create kernel account
+const kernelAccount = await createKernelAccount(publicClient, {
+  plugins: {
+    sudo: ecdsaValidator,    // User's wallet
+    regular: permissionPlugin, // PKP with full permissions
+  },
+  ...
+});
+
+// Serialize for backend
+const approval = await serializePermissionAccount(kernelAccount);
+```
+
+**Database Changes:**
+- Added `litPkpEthAddress` to `Swarm` model
+- Added `sessionKeyApproval` to `SwarmMembership` model
+
 #### Next Steps for Phase 7
 
 1. Create transaction template engine in shared package
 2. Implement template placeholder resolution (walletAddress, balances, percentages)
-3. Build transaction execution endpoint
+3. Build transaction execution endpoint using `deserializePermissionAccount`
 4. Create manager UI for building and submitting transactions

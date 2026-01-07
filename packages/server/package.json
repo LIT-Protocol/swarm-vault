@@ -11,6 +11,8 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ethersproject/providers": "^5.8.0",
+    "@ethersproject/wallet": "^5.8.0",
     "@lit-protocol/auth-helpers": "^6.11.0",
     "@lit-protocol/constants": "^6.11.0",
     "@lit-protocol/contracts-sdk": "^6.11.0",

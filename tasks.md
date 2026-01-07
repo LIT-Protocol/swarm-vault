@@ -129,27 +129,33 @@
 
 ### 6.1 Backend Endpoints
 - [x] `POST /api/swarms/:id/join` - Join swarm
-  - Compute ZeroDev wallet address
-  - Create SwarmMembership record
+  - Accept client-computed wallet address and session key approval
+  - Create SwarmMembership record with sessionKeyApproval
   - Handle re-joining after leaving
 - [x] `GET /api/memberships` - Get user's memberships
 - [x] `GET /api/memberships/:id` - Get membership details
 - [x] `POST /api/memberships/:id/leave` - Leave a swarm
 
-### 6.2 User Dashboard - Swarm Discovery
+### 6.2 Client-Side Smart Wallet Creation
+- [x] Install ZeroDev SDK packages on client
+- [x] Create `smartWallet.ts` with `createAgentWallet` function
+- [x] User's wallet creates kernel account with PKP as session signer
+- [x] Serialize permission account for backend transaction signing
+
+### 6.3 User Dashboard - Swarm Discovery
 - [x] Create swarm discovery page (already existed, enhanced)
 - [x] List all public swarms
 - [x] Search/filter swarms
-- [x] Join swarm button with loading state
+- [x] Join swarm button with multi-step status display
 - [x] Show membership status on swarm cards
 
-### 6.3 User Dashboard - My Swarms
+### 6.4 User Dashboard - My Swarms
 - [x] List user's swarm memberships
 - [x] Show agent wallet address for each
 - [x] Show status (active, etc.)
 - [x] Copy address to clipboard functionality
 
-### 6.4 User Dashboard - Membership Detail
+### 6.5 User Dashboard - Membership Detail
 - [x] Show swarm info
 - [x] Show agent wallet address with copy button
 - [x] Show deposit instructions

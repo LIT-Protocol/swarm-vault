@@ -27,6 +27,7 @@ model Swarm {
   socialUrl       String?
   litPkpPublicKey String
   litPkpTokenId   String
+  litPkpEthAddress String  // ETH address derived from PKP public key
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -59,6 +60,7 @@ model SwarmMembership {
   swarmId            String
   userId             String
   agentWalletAddress String
+  sessionKeyApproval String?          @db.Text // Serialized permission account for PKP signing
   status             MembershipStatus @default(ACTIVE)
   joinedAt           DateTime         @default(now())
 

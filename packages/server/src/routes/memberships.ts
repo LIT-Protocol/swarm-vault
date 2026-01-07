@@ -1,12 +1,18 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
-import { computeSmartWalletAddress } from "../lib/zerodev.js";
-import type { Address } from "viem";
+import { z } from "zod";
 
 const router = Router();
 
+// Schema for join request - client must compute wallet and approval
+const JoinSwarmSchema = z.object({
+  agentWalletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address"),
+  sessionKeyApproval: z.string().min(1, "Session key approval is required"),
+});
+
 // POST /api/swarms/:swarmId/join - Join a swarm
+// Client must create the kernel account and serialize the permission account
 router.post(
   "/swarms/:swarmId/join",
   authMiddleware,
@@ -14,7 +20,18 @@ router.post(
     try {
       const { swarmId } = req.params;
       const userId = req.user!.userId;
-      const userWalletAddress = req.user!.walletAddress;
+
+      // Validate request body
+      const parseResult = JoinSwarmSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        res.status(400).json({
+          success: false,
+          error: parseResult.error.errors[0].message,
+        });
+        return;
+      }
+
+      const { agentWalletAddress, sessionKeyApproval } = parseResult.data;
 
       // Check if swarm exists
       const swarm = await prisma.swarm.findUnique({
@@ -51,12 +68,14 @@ router.post(
           return;
         }
 
-        // If they previously left, reactivate membership
+        // If they previously left, reactivate membership with new approval
         const updatedMembership = await prisma.swarmMembership.update({
           where: { id: existingMembership.id },
           data: {
             status: "ACTIVE",
             joinedAt: new Date(),
+            agentWalletAddress,
+            sessionKeyApproval,
           },
           include: {
             swarm: {
@@ -83,26 +102,18 @@ router.post(
         return;
       }
 
-      // Compute the smart wallet address for this user
       console.log(
-        `[Membership] Computing smart wallet for user ${userWalletAddress} in swarm ${swarmId}`
+        `[Membership] Creating membership for user in swarm ${swarmId}`
       );
+      console.log(`[Membership] Agent wallet: ${agentWalletAddress}`);
 
-      // Use a unique index for each swarm membership to prevent address collisions
-      // We'll use a hash-based approach, but for now use 0n as we have the unique constraint
-      const agentWalletAddress = await computeSmartWalletAddress(
-        userWalletAddress as Address,
-        0n
-      );
-
-      console.log(`[Membership] Computed agent wallet: ${agentWalletAddress}`);
-
-      // Create the membership
+      // Create the membership with client-provided data
       const membership = await prisma.swarmMembership.create({
         data: {
           swarmId,
           userId,
           agentWalletAddress,
+          sessionKeyApproval,
           status: "ACTIVE",
         },
         include: {
