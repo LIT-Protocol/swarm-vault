@@ -551,3 +551,60 @@ JWT_SECRET=...
 2. Integrate ZeroDev wallet creation when user joins swarm
 3. Build user dashboard for viewing memberships
 4. Show agent wallet address and deposit instructions
+
+### Phase 6 Learnings (User Membership)
+
+**Completed:** 2025-01-07
+
+#### Backend Membership Flow
+
+1. **ZeroDev Address Computation**: The `computeSmartWalletAddress` function computes deterministic counterfactual addresses based on the user's EOA. This address is computed without deploying the smart wallet - deployment happens on first transaction.
+
+2. **Re-joining Flow**: When a user leaves a swarm, their membership status changes to "LEFT" but the record is preserved. If they join again, the existing record is reactivated with a new `joinedAt` timestamp rather than creating a duplicate.
+
+3. **Prisma Unique Constraints**: The `@@unique([swarmId, userId])` constraint on `SwarmMembership` ensures one membership per user per swarm. Used `findUnique` with the compound key for efficient lookups:
+   ```typescript
+   await prisma.swarmMembership.findUnique({
+     where: { swarmId_userId: { swarmId, userId } }
+   });
+   ```
+
+4. **Router Mounting Strategy**: The memberships router handles both `/api/memberships/*` routes and `/api/swarms/:id/join`. Mounted twice at `/api/memberships` and `/api` to handle both URL patterns cleanly.
+
+#### Frontend User Experience
+
+1. **Membership State Tracking**: SwarmDiscovery fetches both swarms and user memberships to show accurate membership status on each card. This enables showing "Member" badges and converting "Join" buttons to "View" links.
+
+2. **Optimistic UI Updates**: After joining a swarm, the membership list and member count are updated locally before navigating to the detail page, providing instant feedback.
+
+3. **Copy to Clipboard**: Implemented clipboard copy for agent wallet addresses with visual feedback ("Copied!" state that resets after 2 seconds).
+
+4. **Leave Confirmation**: Added two-step leave flow - click "Leave Swarm" to show confirmation buttons, then "Confirm Leave" to execute. This prevents accidental leaves.
+
+5. **External Links**: Added links to BaseScan (for balance viewing) and dApps like Zerion/Safe (for withdrawals), providing clear paths for users to interact with their agent wallets.
+
+#### Navigation Improvements
+
+1. **Header Navigation**: Added persistent navigation links (Discover, My Swarms, Manager) in the Layout header for authenticated users, improving discoverability of features.
+
+2. **Cross-Page Links**: Added "My Swarms" link with count badge on SwarmDiscovery page, and "Discover Swarms" button on MySwarms page for easy navigation between views.
+
+#### Key Files Created
+
+- `packages/server/src/routes/memberships.ts` - All membership CRUD endpoints (join, list, detail, leave)
+- `packages/client/src/pages/MySwarms.tsx` - User's membership list view
+- `packages/client/src/pages/MembershipDetail.tsx` - Detailed membership view with deposit/withdraw instructions
+
+#### Key Files Modified
+
+- `packages/server/src/index.ts` - Added memberships router mounting
+- `packages/client/src/App.tsx` - Added routes for my-swarms pages
+- `packages/client/src/pages/SwarmDiscovery.tsx` - Enhanced with join functionality
+- `packages/client/src/components/Layout.tsx` - Added navigation links
+
+#### Next Steps for Phase 7
+
+1. Create transaction template engine in shared package
+2. Implement template placeholder resolution (walletAddress, balances, percentages)
+3. Build transaction execution endpoint
+4. Create manager UI for building and submitting transactions

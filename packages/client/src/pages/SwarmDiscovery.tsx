@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,19 +15,46 @@ interface SwarmListItem {
   isManager: boolean;
 }
 
+interface MembershipListItem {
+  id: string;
+  swarmId: string;
+}
+
+interface JoinResult {
+  id: string;
+  swarmId: string;
+  agentWalletAddress: string;
+}
+
 export default function SwarmDiscovery() {
+  const navigate = useNavigate();
   const [swarms, setSwarms] = useState<SwarmListItem[]>([]);
+  const [memberships, setMemberships] = useState<MembershipListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [joiningSwarmId, setJoiningSwarmId] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const fetchSwarms = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        const data = await api.get<SwarmListItem[]>("/api/swarms");
-        setSwarms(data);
+        const swarmsData = await api.get<SwarmListItem[]>("/api/swarms");
+        setSwarms(swarmsData);
+
+        // Fetch user's memberships if authenticated
+        if (isAuthenticated) {
+          try {
+            const membershipsData =
+              await api.get<MembershipListItem[]>("/api/memberships");
+            setMemberships(membershipsData);
+          } catch {
+            // User might not have any memberships yet
+            setMemberships([]);
+          }
+        }
+
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load swarms");
@@ -35,8 +63,44 @@ export default function SwarmDiscovery() {
       }
     };
 
-    fetchSwarms();
-  }, []);
+    fetchData();
+  }, [isAuthenticated]);
+
+  const handleJoin = async (swarmId: string) => {
+    try {
+      setJoiningSwarmId(swarmId);
+      setError(null);
+      const result = await api.post<JoinResult>(`/api/swarms/${swarmId}/join`);
+
+      // Update memberships list
+      setMemberships((prev) => [
+        ...prev,
+        { id: result.id, swarmId: result.swarmId },
+      ]);
+
+      // Update swarm member count
+      setSwarms((prev) =>
+        prev.map((s) =>
+          s.id === swarmId ? { ...s, memberCount: s.memberCount + 1 } : s
+        )
+      );
+
+      // Navigate to the membership detail page
+      navigate(`/my-swarms/${result.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to join swarm");
+    } finally {
+      setJoiningSwarmId(null);
+    }
+  };
+
+  const isMember = (swarmId: string) => {
+    return memberships.some((m) => m.swarmId === swarmId);
+  };
+
+  const getMembershipId = (swarmId: string) => {
+    return memberships.find((m) => m.swarmId === swarmId)?.id;
+  };
 
   const filteredSwarms = swarms.filter(
     (swarm) =>
@@ -54,11 +118,21 @@ export default function SwarmDiscovery() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Discover Swarms</h1>
-        <p className="text-gray-600 mt-1">
-          Browse and join swarms managed by trusted parties
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Discover Swarms</h1>
+          <p className="text-gray-600 mt-1">
+            Browse and join swarms managed by trusted parties
+          </p>
+        </div>
+        {isAuthenticated && (
+          <Link
+            to="/my-swarms"
+            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+          >
+            My Swarms ({memberships.length})
+          </Link>
+        )}
       </div>
 
       <div>
@@ -104,6 +178,11 @@ export default function SwarmDiscovery() {
                     Manager
                   </span>
                 )}
+                {isMember(swarm.id) && !swarm.isManager && (
+                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                    Member
+                  </span>
+                )}
               </div>
               <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                 {swarm.description}
@@ -133,13 +212,24 @@ export default function SwarmDiscovery() {
                   </a>
                 )}
                 {isAuthenticated && !swarm.isManager && (
-                  <button
-                    className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    disabled
-                    title="Join functionality coming soon"
-                  >
-                    Join
-                  </button>
+                  <>
+                    {isMember(swarm.id) ? (
+                      <Link
+                        to={`/my-swarms/${getMembershipId(swarm.id)}`}
+                        className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200"
+                      >
+                        View
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleJoin(swarm.id)}
+                        disabled={joiningSwarmId === swarm.id}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {joiningSwarmId === swarm.id ? "Joining..." : "Join"}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

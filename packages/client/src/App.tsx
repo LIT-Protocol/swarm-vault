@@ -4,6 +4,8 @@ import HomePage from "./pages/HomePage";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import SwarmDetail from "./pages/SwarmDetail";
 import SwarmDiscovery from "./pages/SwarmDiscovery";
+import MySwarms from "./pages/MySwarms";
+import MembershipDetail from "./pages/MembershipDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -28,6 +30,22 @@ function App() {
           }
         />
         <Route path="swarms" element={<SwarmDiscovery />} />
+        <Route
+          path="my-swarms"
+          element={
+            <ProtectedRoute>
+              <MySwarms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-swarms/:id"
+          element={
+            <ProtectedRoute>
+              <MembershipDetail />
+            </ProtectedRoute>
+          }
+        />
       </Route>
     </Routes>
   );

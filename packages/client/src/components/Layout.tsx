@@ -24,8 +24,26 @@ export default function Layout() {
             </Link>
 
             <nav className="flex items-center gap-4">
+              <Link
+                to="/swarms"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              >
+                Discover
+              </Link>
               {isAuthenticated && user ? (
                 <div className="flex items-center gap-4">
+                  <Link
+                    to="/my-swarms"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    My Swarms
+                  </Link>
+                  <Link
+                    to="/manager"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Manager
+                  </Link>
                   <span className="text-sm text-gray-600">
                     {truncateAddress(user.walletAddress)}
                   </span>

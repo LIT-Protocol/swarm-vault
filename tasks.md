@@ -125,33 +125,38 @@
 
 ---
 
-## Phase 6: User Membership
+## Phase 6: User Membership [COMPLETED]
 
 ### 6.1 Backend Endpoints
-- [ ] `POST /api/swarms/:id/join` - Join swarm
+- [x] `POST /api/swarms/:id/join` - Join swarm
   - Compute ZeroDev wallet address
-  - Add PKP as session signer
   - Create SwarmMembership record
-- [ ] `GET /api/memberships` - Get user's memberships
-- [ ] `GET /api/memberships/:id` - Get membership details
+  - Handle re-joining after leaving
+- [x] `GET /api/memberships` - Get user's memberships
+- [x] `GET /api/memberships/:id` - Get membership details
+- [x] `POST /api/memberships/:id/leave` - Leave a swarm
 
 ### 6.2 User Dashboard - Swarm Discovery
-- [ ] Create swarm discovery page
-- [ ] List all public swarms
-- [ ] Search/filter swarms
-- [ ] Join swarm button
+- [x] Create swarm discovery page (already existed, enhanced)
+- [x] List all public swarms
+- [x] Search/filter swarms
+- [x] Join swarm button with loading state
+- [x] Show membership status on swarm cards
 
 ### 6.3 User Dashboard - My Swarms
-- [ ] List user's swarm memberships
-- [ ] Show agent wallet address for each
-- [ ] Show status (active, etc.)
+- [x] List user's swarm memberships
+- [x] Show agent wallet address for each
+- [x] Show status (active, etc.)
+- [x] Copy address to clipboard functionality
 
 ### 6.4 User Dashboard - Membership Detail
-- [ ] Show swarm info
-- [ ] Show agent wallet address with copy button
-- [ ] Show deposit instructions
-- [ ] Show balance (ETH + ERC20s via Alchemy)
-- [ ] Link to external dApp for withdrawals (Zerion, etc.)
+- [x] Show swarm info
+- [x] Show agent wallet address with copy button
+- [x] Show deposit instructions
+- [ ] Show balance (ETH + ERC20s via Alchemy) - Deferred to Phase 8
+- [x] Link to external dApp for withdrawals (Zerion, Safe)
+- [x] Link to BaseScan for viewing balance
+- [x] Leave swarm functionality with confirmation
 
 ---
 

@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
 import { swarmsRouter } from "./routes/swarms.js";
+import { membershipsRouter } from "./routes/memberships.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,9 @@ app.use(morgan("dev"));
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/swarms", swarmsRouter);
+app.use("/api/memberships", membershipsRouter);
+// Also mount memberships router at /api for the /api/swarms/:id/join route
+app.use("/api", membershipsRouter);
 
 // Error handling
 app.use(errorHandler);
