@@ -100,28 +100,28 @@
 
 ---
 
-## Phase 5: Swarm Management
+## Phase 5: Swarm Management [COMPLETED]
 
 ### 5.1 Backend Endpoints
-- [ ] `GET /api/swarms` - List all swarms (public)
-- [ ] `POST /api/swarms` - Create swarm (requires auth)
+- [x] `GET /api/swarms` - List all swarms (public)
+- [x] `POST /api/swarms` - Create swarm (requires auth)
   - Validate input (name, description, socialUrl)
   - Mint Lit PKP
   - Create swarm in database
-- [ ] `GET /api/swarms/:id` - Get swarm details
-- [ ] `GET /api/swarms/:id/members` - Get swarm members (manager only)
+- [x] `GET /api/swarms/:id` - Get swarm details
+- [x] `GET /api/swarms/:id/members` - Get swarm members (manager only)
 
 ### 5.2 Manager Dashboard - Swarm List
-- [ ] Create manager dashboard page
-- [ ] List manager's swarms
-- [ ] Create swarm form/modal
-- [ ] Show swarm stats (member count, etc.)
+- [x] Create manager dashboard page
+- [x] List manager's swarms
+- [x] Create swarm form/modal
+- [x] Show swarm stats (member count, etc.)
 
 ### 5.3 Manager Dashboard - Swarm Detail
-- [ ] Show swarm info (name, description, social)
-- [ ] List all members with agent wallet addresses
-- [ ] Show member balances (via Alchemy)
-- [ ] Transaction form (to, value, data inputs)
+- [x] Show swarm info (name, description, social)
+- [x] List all members with agent wallet addresses
+- [ ] Show member balances (via Alchemy) - Deferred to Phase 8
+- [ ] Transaction form (to, value, data inputs) - Deferred to Phase 7
 
 ---
 

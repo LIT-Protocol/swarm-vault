@@ -505,3 +505,49 @@ JWT_SECRET=...
 2. Integrate PKP minting into swarm creation flow
 3. Build manager dashboard UI for swarm management
 4. Implement member listing with agent wallet addresses
+
+### Phase 5 Learnings (Swarm Management)
+
+**Completed:** 2025-01-07
+
+#### Backend API Design
+
+1. **Optional Auth for Public Routes**: Used `optionalAuthMiddleware` for listing swarms so public users can browse, but authenticated users get additional context (like `isManager` flag).
+
+2. **Prisma Aggregations**: Used Prisma's `_count` feature with `include` to efficiently count active memberships without loading all records:
+   ```typescript
+   _count: {
+     select: {
+       memberships: { where: { status: "ACTIVE" } }
+     }
+   }
+   ```
+
+3. **Manager-Only Endpoints**: Added authorization check in `GET /api/swarms/:id/members` to verify the requesting user is a manager of the swarm before returning member data.
+
+4. **PKP Info Privacy**: The `litPkpPublicKey` is only returned to managers, not public users, as a security consideration.
+
+#### Frontend Architecture
+
+1. **Vite TypeScript Configuration**: Added `vite-env.d.ts` with `/// <reference types="vite/client" />` and configured `"types": ["vite/client"]` in tsconfig to enable `import.meta.env` type support.
+
+2. **Modal Component Pattern**: Created `CreateSwarmModal` as a self-contained component that handles its own form state, loading states, and error display. The parent component only passes `isOpen`, `onClose`, and `onCreated` callbacks.
+
+3. **Protected Routes**: Used existing `ProtectedRoute` component wrapper for manager dashboard routes. Unprotected routes (like SwarmDiscovery) handle the unauthenticated state gracefully with informational messages.
+
+4. **Search/Filter Client-Side**: For the SwarmDiscovery page, implemented client-side filtering since the swarm list is expected to be small. Server-side pagination/search would be needed for scale.
+
+#### Key Files Created
+
+- `packages/server/src/routes/swarms.ts` - All swarm CRUD endpoints
+- `packages/client/src/pages/ManagerDashboard.tsx` - Manager's swarm list view
+- `packages/client/src/pages/SwarmDetail.tsx` - Swarm detail with member table
+- `packages/client/src/pages/SwarmDiscovery.tsx` - Public swarm browsing
+- `packages/client/src/components/CreateSwarmModal.tsx` - Swarm creation form
+
+#### Next Steps for Phase 6
+
+1. Create membership endpoints (join swarm, list memberships)
+2. Integrate ZeroDev wallet creation when user joins swarm
+3. Build user dashboard for viewing memberships
+4. Show agent wallet address and deposit instructions

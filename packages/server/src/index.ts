@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
+import { swarmsRouter } from "./routes/swarms.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,6 +18,7 @@ app.use(morgan("dev"));
 // Routes
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/swarms", swarmsRouter);
 
 // Error handling
 app.use(errorHandler);
