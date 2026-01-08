@@ -1,9 +1,6 @@
 import { LitNodeClient } from "@lit-protocol/lit-node-client";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
-import {
-  LIT_NETWORK,
-  type LIT_NETWORK_VALUES,
-} from "@lit-protocol/constants";
+import { LIT_NETWORK, type LIT_NETWORK_VALUES } from "@lit-protocol/constants";
 import {
   LitAbility,
   LitActionResource,
@@ -11,9 +8,8 @@ import {
   createSiweMessage,
   generateAuthSig,
 } from "@lit-protocol/auth-helpers";
-// Use ethers v5 packages for Lit SDK compatibility
-import { Wallet } from "@ethersproject/wallet";
-import { JsonRpcProvider } from "@ethersproject/providers";
+// Use ethers v5 from the Lit SDK's dependencies for compatibility
+import { ethers } from "ethers";
 import { env } from "./env.js";
 
 // Lit Chronicle Yellowstone RPC URL
@@ -59,14 +55,14 @@ export async function getLitNodeClient(): Promise<LitNodeClient> {
 /**
  * Get the subsidizing wallet from environment, connected to Lit network
  */
-function getSubsidizingWallet(): Wallet {
+function getSubsidizingWallet(): ethers.Wallet {
   if (!env.LIT_PRIVATE_KEY) {
     throw new Error("LIT_PRIVATE_KEY is required for PKP operations");
   }
-  // Create provider for Lit Chronicle Yellowstone network (ethers v5)
-  const provider = new JsonRpcProvider(LIT_RPC_URL);
+  // Create provider for Lit Chronicle Yellowstone network
+  const provider = new ethers.JsonRpcProvider(LIT_RPC_URL);
   // Connect wallet to provider
-  return new Wallet(env.LIT_PRIVATE_KEY, provider);
+  return new ethers.Wallet(env.LIT_PRIVATE_KEY, provider);
 }
 
 /**
@@ -111,29 +107,6 @@ export async function getSessionSigs(): Promise<SessionSigsMap> {
   const client = await getLitNodeClient();
   const wallet = getSubsidizingWallet();
 
-  // Generate SIWE auth sig
-  const siweMessage = await createSiweMessage({
-    walletAddress: wallet.address,
-    nonce: await client.getLatestBlockhash(),
-    expiration: new Date(Date.now() + 1000 * 60 * 60).toISOString(), // 1 hour
-    resources: [
-      {
-        resource: new LitPKPResource("*"),
-        ability: LitAbility.PKPSigning,
-      },
-      {
-        resource: new LitActionResource("*"),
-        ability: LitAbility.LitActionExecution,
-      },
-    ],
-    litNodeClient: client,
-  });
-
-  const authSig = await generateAuthSig({
-    signer: wallet,
-    toSign: siweMessage,
-  });
-
   // Get session signatures
   const sessionSigs = await client.getSessionSigs({
     chain: "ethereum",
@@ -148,7 +121,26 @@ export async function getSessionSigs(): Promise<SessionSigsMap> {
         ability: LitAbility.LitActionExecution,
       },
     ],
-    authNeededCallback: async () => {
+    authNeededCallback: async ({
+      uri,
+      expiration,
+      resourceAbilityRequests,
+    }) => {
+      // Generate SIWE auth sig
+      const siweMessage = await createSiweMessage({
+        uri,
+        walletAddress: wallet.address,
+        nonce: await client.getLatestBlockhash(),
+        expiration: expiration,
+        resources: resourceAbilityRequests,
+        litNodeClient: client,
+      });
+
+      const authSig = await generateAuthSig({
+        signer: wallet,
+        toSign: siweMessage,
+      });
+
       return authSig;
     },
   });

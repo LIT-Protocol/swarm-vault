@@ -61,7 +61,11 @@ export async function signUserOperations(
     });
 
     // Parse the response from the Lit Action
-    const response = JSON.parse(result.response as string);
+    // Note: Lit SDK may return the response already parsed as an object
+    const response =
+      typeof result.response === "string"
+        ? JSON.parse(result.response)
+        : result.response;
 
     if (!response.success) {
       return {
