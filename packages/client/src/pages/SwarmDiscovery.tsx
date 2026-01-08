@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useWalletClient } from "wagmi";
+import { useWalletClient, useAccount, useSwitchChain } from "wagmi";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 import { createAgentWallet, swarmIdToIndex } from "../lib/smartWallet";
+
+const EXPECTED_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 84532);
 
 interface SwarmListItem {
   id: string;
@@ -36,6 +38,8 @@ interface JoinResult {
 export default function SwarmDiscovery() {
   const navigate = useNavigate();
   const { data: walletClient } = useWalletClient();
+  const { isConnected, chainId } = useAccount();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
   const [swarms, setSwarms] = useState<SwarmListItem[]>([]);
   const [memberships, setMemberships] = useState<MembershipListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +48,13 @@ export default function SwarmDiscovery() {
   const [joiningSwarmId, setJoiningSwarmId] = useState<string | null>(null);
   const [joinStatus, setJoinStatus] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
+
+  const isWrongNetwork = isConnected && chainId !== EXPECTED_CHAIN_ID;
+  const canJoin = isConnected && !isWrongNetwork && !!walletClient;
+
+  const handleSwitchNetwork = () => {
+    switchChain({ chainId: EXPECTED_CHAIN_ID });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,7 +88,12 @@ export default function SwarmDiscovery() {
 
   const handleJoin = async (swarmId: string) => {
     if (!walletClient) {
-      setError("Wallet not connected");
+      setError("Wallet not connected. Please connect your wallet and ensure you're on the correct network.");
+      return;
+    }
+
+    if (isWrongNetwork) {
+      setError(`Please switch to ${EXPECTED_CHAIN_ID === 8453 ? "Base" : "Base Sepolia"} network to join.`);
       return;
     }
 
@@ -98,7 +114,7 @@ export default function SwarmDiscovery() {
       console.log("Creating agent wallet with PKP:", swarmDetail.litPkpEthAddress);
 
       const { agentWalletAddress, sessionKeyApproval } = await createAgentWallet({
-        walletProvider: walletClient,
+        walletClient,
         pkpEthAddress: swarmDetail.litPkpEthAddress,
         index: swarmIdToIndex(swarmId),
       });
@@ -191,6 +207,22 @@ export default function SwarmDiscovery() {
         </div>
       )}
 
+      {isAuthenticated && isWrongNetwork && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>
+            You're connected to the wrong network. Please switch to{" "}
+            {EXPECTED_CHAIN_ID === 8453 ? "Base" : "Base Sepolia"} to join swarms.
+          </span>
+          <button
+            onClick={handleSwitchNetwork}
+            disabled={isSwitchingChain}
+            className="ml-4 px-3 py-1 text-sm font-medium text-yellow-800 bg-yellow-200 rounded hover:bg-yellow-300 disabled:opacity-50"
+          >
+            {isSwitchingChain ? "Switching..." : "Switch Network"}
+          </button>
+        </div>
+      )}
+
       {filteredSwarms.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -263,9 +295,17 @@ export default function SwarmDiscovery() {
                     ) : (
                       <button
                         onClick={() => handleJoin(swarm.id)}
-                        disabled={joiningSwarmId === swarm.id || !walletClient}
-                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                        title={!walletClient ? "Connect wallet first" : undefined}
+                        disabled={joiningSwarmId === swarm.id || !canJoin}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={
+                          !isConnected
+                            ? "Connect your wallet first"
+                            : isWrongNetwork
+                              ? "Switch to the correct network"
+                              : !walletClient
+                                ? "Waiting for wallet..."
+                                : undefined
+                        }
                       >
                         {joiningSwarmId === swarm.id
                           ? joinStatus || "Joining..."

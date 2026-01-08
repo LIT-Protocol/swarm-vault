@@ -1,4 +1,13 @@
-import { createPublicClient, http, getAddress, type Address } from "viem";
+import {
+  createPublicClient,
+  http,
+  getAddress,
+  type Address,
+  type WalletClient,
+  type Transport,
+  type Chain,
+  type Account,
+} from "viem";
 import { baseSepolia, base } from "viem/chains";
 import { createKernelAccount, addressToEmptyAccount } from "@zerodev/sdk";
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
@@ -9,7 +18,6 @@ import {
   serializePermissionAccount,
 } from "@zerodev/permissions";
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
-import type { EIP1193Provider } from "viem";
 
 // Get chain based on env
 const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 84532);
@@ -26,8 +34,8 @@ const ENTRY_POINT = getEntryPoint("0.7");
 const KERNEL_VERSION = KERNEL_V3_1;
 
 export interface CreateAgentWalletParams {
-  /** The user's wallet provider (from wagmi) */
-  walletProvider: EIP1193Provider;
+  /** The user's wallet client (from wagmi's useWalletClient) */
+  walletClient: WalletClient<Transport, Chain, Account>;
   /** The swarm's PKP ETH address (from swarm.litPkpEthAddress) */
   pkpEthAddress: string;
   /** Unique index for this swarm (use swarm ID hash or counter) */
@@ -54,15 +62,15 @@ export interface CreateAgentWalletResult {
 export async function createAgentWallet(
   params: CreateAgentWalletParams
 ): Promise<CreateAgentWalletResult> {
-  const { walletProvider, pkpEthAddress, index = 0n } = params;
+  const { walletClient, pkpEthAddress, index = 0n } = params;
 
   console.log("=== Creating Agent Wallet ===");
   console.log("PKP ETH Address:", pkpEthAddress);
   console.log("Index:", index.toString());
 
-  // Create ECDSA validator using the user's wallet provider (owner)
+  // Create ECDSA validator using the user's wallet client (owner)
   const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
-    signer: walletProvider,
+    signer: walletClient,
     entryPoint: ENTRY_POINT,
     kernelVersion: KERNEL_VERSION,
   });
