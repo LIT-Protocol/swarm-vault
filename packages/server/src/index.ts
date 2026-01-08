@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.js";
 import { swarmsRouter } from "./routes/swarms.js";
 import { membershipsRouter } from "./routes/memberships.js";
 import { transactionsRouter } from "./routes/transactions.js";
+import { pollPendingTransactions } from "./lib/transactionExecutor.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,4 +33,15 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Start polling for pending transaction receipts every 10 seconds
+  const POLL_INTERVAL = 10000;
+  setInterval(() => {
+    pollPendingTransactions().catch((err) => {
+      console.error("[TransactionPoller] Error polling transactions:", err);
+    });
+  }, POLL_INTERVAL);
+  console.log(
+    `[TransactionPoller] Started polling every ${POLL_INTERVAL / 1000}s`
+  );
 });
