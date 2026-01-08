@@ -41,6 +41,7 @@ interface TransactionDetailData {
 interface TransactionHistoryProps {
   swarmId: string;
   refreshTrigger?: number;
+  onResent?: () => void;
 }
 
 function getStatusColor(status: string) {
@@ -66,12 +67,14 @@ function truncateAddress(address: string) {
 export default function TransactionHistory({
   swarmId,
   refreshTrigger,
+  onResent,
 }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTx, setSelectedTx] = useState<TransactionDetailData | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     try {
@@ -113,6 +116,27 @@ export default function TransactionHistory({
       console.error("Failed to load transaction detail:", err);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleResend = async (e: React.MouseEvent, tx: TransactionData) => {
+    e.stopPropagation(); // Prevent opening the detail modal
+
+    if (resendingId) return; // Already resending something
+
+    setResendingId(tx.id);
+    try {
+      await api.post(`/api/swarms/${swarmId}/transactions`, {
+        template: tx.template,
+      });
+      // Refresh the list
+      await fetchTransactions();
+      onResent?.();
+    } catch (err) {
+      console.error("Failed to resend transaction:", err);
+      alert(err instanceof Error ? err.message : "Failed to resend transaction");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -167,27 +191,51 @@ export default function TransactionHistory({
                 </span>
               </div>
 
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-600">
-                  {tx.targetCount} target{tx.targetCount !== 1 ? "s" : ""}
-                </span>
-                <div className="flex gap-2">
-                  {tx.statusCounts.confirmed > 0 && (
-                    <span className="text-green-600">
-                      {tx.statusCounts.confirmed} confirmed
-                    </span>
-                  )}
-                  {tx.statusCounts.submitted > 0 && (
-                    <span className="text-yellow-600">
-                      {tx.statusCounts.submitted} pending
-                    </span>
-                  )}
-                  {tx.statusCounts.failed > 0 && (
-                    <span className="text-red-600">
-                      {tx.statusCounts.failed} failed
-                    </span>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-gray-600">
+                    {tx.targetCount} target{tx.targetCount !== 1 ? "s" : ""}
+                  </span>
+                  <div className="flex gap-2">
+                    {tx.statusCounts.confirmed > 0 && (
+                      <span className="text-green-600">
+                        {tx.statusCounts.confirmed} confirmed
+                      </span>
+                    )}
+                    {tx.statusCounts.submitted > 0 && (
+                      <span className="text-yellow-600">
+                        {tx.statusCounts.submitted} pending
+                      </span>
+                    )}
+                    {tx.statusCounts.failed > 0 && (
+                      <span className="text-red-600">
+                        {tx.statusCounts.failed} failed
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <button
+                  onClick={(e) => handleResend(e, tx)}
+                  disabled={resendingId !== null}
+                  className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  {resendingId === tx.id ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Resend
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           ))}
@@ -224,17 +272,57 @@ export default function TransactionHistory({
                 </div>
               ) : (
                 <>
-                  <div className="mb-4">
-                    <span
-                      className={`px-2 py-1 text-sm font-medium rounded ${getStatusColor(
-                        selectedTx.status
-                      )}`}
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <span
+                        className={`px-2 py-1 text-sm font-medium rounded ${getStatusColor(
+                          selectedTx.status
+                        )}`}
+                      >
+                        {selectedTx.status}
+                      </span>
+                      <span className="ml-3 text-sm text-gray-500">
+                        {new Date(selectedTx.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (resendingId) return;
+                        setResendingId(selectedTx.id);
+                        try {
+                          await api.post(`/api/swarms/${swarmId}/transactions`, {
+                            template: selectedTx.template,
+                          });
+                          setSelectedTx(null);
+                          await fetchTransactions();
+                          onResent?.();
+                        } catch (err) {
+                          console.error("Failed to resend transaction:", err);
+                          alert(err instanceof Error ? err.message : "Failed to resend transaction");
+                        } finally {
+                          setResendingId(null);
+                        }
+                      }}
+                      disabled={resendingId !== null}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      {selectedTx.status}
-                    </span>
-                    <span className="ml-3 text-sm text-gray-500">
-                      {new Date(selectedTx.createdAt).toLocaleString()}
-                    </span>
+                      {resendingId === selectedTx.id ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Resend Transaction
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   <div className="mb-6">
