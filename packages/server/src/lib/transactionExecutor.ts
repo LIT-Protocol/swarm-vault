@@ -15,8 +15,10 @@ import {
   createZeroDevPaymasterClient,
 } from "@zerodev/sdk";
 import { deserializePermissionAccount } from "@zerodev/permissions";
+import { toECDSASigner } from "@zerodev/permissions/signers";
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
 import type { Swarm, SwarmMembership, User } from "@prisma/client";
+import { createPkpViemAccount } from "./pkpSigner.js";
 
 // Types
 type MembershipWithUser = SwarmMembership & { user: User };
@@ -52,12 +54,15 @@ const KERNEL_VERSION = KERNEL_V3_1;
  */
 export async function executeSwarmTransaction(
   transactionId: string,
-  _swarm: Swarm,
+  swarm: Swarm,
   memberships: MembershipWithUser[],
   template: TransactionTemplateInput
 ): Promise<void> {
   console.log(
     `[TransactionExecutor] Starting execution for transaction ${transactionId}`
+  );
+  console.log(
+    `[TransactionExecutor] Using PKP: ${swarm.litPkpEthAddress}`
   );
 
   try {
@@ -160,6 +165,15 @@ export async function executeSwarmTransaction(
       transport: http(rpcUrl),
     });
 
+    // Create the PKP viem account for signing
+    const pkpViemAccount = createPkpViemAccount(
+      swarm.litPkpPublicKey,
+      swarm.litPkpEthAddress as Address
+    );
+
+    // Create an ECDSA signer from the PKP viem account
+    const pkpSigner = await toECDSASigner({ signer: pkpViemAccount });
+
     // Process each member's transaction
     for (let i = 0; i < resolvedTxs.length; i++) {
       const { membership, resolved } = resolvedTxs[i];
@@ -170,13 +184,14 @@ export async function executeSwarmTransaction(
           `[TransactionExecutor] Processing transaction for member ${membership.id}`
         );
 
-        // Deserialize the permission account
-        // This reconstructs the kernel account with the PKP signer permissions
+        // Deserialize the permission account with the PKP signer
+        // This reconstructs the kernel account and uses our PKP to sign operations
         const permissionAccount = await deserializePermissionAccount(
           publicClient,
           ENTRY_POINT,
           KERNEL_VERSION,
-          membership.sessionKeyApproval!
+          membership.sessionKeyApproval!,
+          pkpSigner
         );
 
         // Create a kernel account client
@@ -338,6 +353,17 @@ export async function pollPendingTransactions(): Promise<void> {
 
   for (const target of pendingTargets) {
     try {
+      const swarm = target.transaction.swarm;
+
+      // Create the PKP viem account for signing
+      const pkpViemAccount = createPkpViemAccount(
+        swarm.litPkpPublicKey,
+        swarm.litPkpEthAddress as Address
+      );
+
+      // Create an ECDSA signer from the PKP viem account
+      const pkpSigner = await toECDSASigner({ signer: pkpViemAccount });
+
       // Try to get the receipt
       const paymaster = createZeroDevPaymasterClient({
         chain,
@@ -348,7 +374,8 @@ export async function pollPendingTransactions(): Promise<void> {
         publicClient,
         ENTRY_POINT,
         KERNEL_VERSION,
-        target.membership.sessionKeyApproval!
+        target.membership.sessionKeyApproval!,
+        pkpSigner
       );
 
       const kernelClient = createKernelAccountClient({

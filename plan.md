@@ -715,6 +715,44 @@ const approval = await serializePermissionAccount(kernelAccount);
 
 - `@zerodev/permissions` on server for `deserializePermissionAccount`
 
+#### Phase 7 Fix: PKP Signer for Transaction Execution
+
+**Issue:** Initial implementation of `deserializePermissionAccount` didn't include a signer, so the PKP couldn't actually sign transactions.
+
+**Solution:** Created a custom viem account using `toAccount` that routes signing operations through Lit Protocol:
+
+1. **`packages/server/src/lib/pkpSigner.ts`** - Custom viem account implementation:
+   - Uses `toAccount` from viem to create a custom account
+   - Implements `signMessage`, `signTransaction`, and `signTypedData`
+   - Each method hashes the input appropriately and calls the Lit Action to sign
+   - Uses `hashMessage` (EIP-191), `hashTypedData` (EIP-712), and `keccak256(serializeTransaction())` for transaction signing
+
+2. **Updated `transactionExecutor.ts`**:
+   - Creates PKP viem account from swarm's PKP public key and ETH address
+   - Wraps it with `toECDSASigner` from ZeroDev permissions
+   - Passes the signer as the 5th parameter to `deserializePermissionAccount`
+
+**Key Code Pattern:**
+```typescript
+// Create custom viem account for PKP signing
+const pkpViemAccount = createPkpViemAccount(
+  swarm.litPkpPublicKey,
+  swarm.litPkpEthAddress as Address
+);
+
+// Wrap with ZeroDev's ECDSA signer
+const pkpSigner = await toECDSASigner({ signer: pkpViemAccount });
+
+// Deserialize with the signer
+const permissionAccount = await deserializePermissionAccount(
+  publicClient,
+  ENTRY_POINT,
+  KERNEL_VERSION,
+  membership.sessionKeyApproval!,
+  pkpSigner  // <-- Pass the signer here
+);
+```
+
 #### Next Steps for Phase 8
 
 1. Install Alchemy SDK for enhanced balance fetching

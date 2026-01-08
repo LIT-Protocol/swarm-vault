@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Path to the bundled Lit Action
 const SIGN_TRANSACTION_ACTION_PATH = join(
   __dirname,
-  "../../../../lit-actions/dist/signTransaction.js"
+  "../../../lit-actions/dist/signTransaction.js"
 );
 
 // Cache the loaded Lit Action code
