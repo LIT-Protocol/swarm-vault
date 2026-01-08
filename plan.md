@@ -658,3 +658,66 @@ const approval = await serializePermissionAccount(kernelAccount);
 2. Implement template placeholder resolution (walletAddress, balances, percentages)
 3. Build transaction execution endpoint using `deserializePermissionAccount`
 4. Create manager UI for building and submitting transactions
+
+### Phase 7 Learnings (Transaction Templating & Execution)
+
+**Completed:** 2025-01-08
+
+#### Template Engine Architecture
+
+1. **Placeholder System**: Implemented a flexible placeholder system supporting:
+   - Simple values: `{{walletAddress}}`, `{{ethBalance}}`, `{{blockTimestamp}}`
+   - Parameterized values: `{{tokenBalance:0xAddress}}`, `{{deadline:300}}`
+   - Percentage calculations: `{{percentage:ethBalance:50}}`, `{{percentage:tokenBalance:0x...:100}}`
+   - Slippage calculations: `{{slippage:ethBalance:5}}` for minAmountOut scenarios
+
+2. **Two Template Modes**:
+   - **ABI Mode**: Contract ABI + function name + args array. Uses viem's `encodeFunctionData` for encoding.
+   - **Raw Mode**: Direct hex calldata with placeholder substitution for advanced users.
+
+3. **Recursive Resolution**: Template values are recursively resolved through objects and arrays, allowing placeholders in nested structures like swap parameters.
+
+#### Backend Transaction Flow
+
+1. **Async Execution Pattern**: Transaction submission returns immediately with status "PENDING", then executes asynchronously. This prevents HTTP timeouts for large swarms.
+
+2. **Per-Member Resolution**: Each member's wallet context is fetched independently (ETH balance, token balances, block timestamp) before resolving placeholders.
+
+3. **Permission Account Deserialization**: Uses `deserializePermissionAccount` from `@zerodev/permissions` to reconstruct the kernel account client from the stored `sessionKeyApproval`. This allows the PKP to sign on behalf of the user's smart wallet.
+
+4. **Error Isolation**: Failures for individual members don't affect other members. Each TransactionTarget tracks its own status and error.
+
+5. **Status Aggregation**: Parent Transaction status is derived from target statuses:
+   - PROCESSING if any target is PENDING or SUBMITTED
+   - COMPLETED if all targets are CONFIRMED
+   - FAILED if any target failed and not all confirmed
+
+#### Frontend Transaction UI
+
+1. **Quick Load ABIs**: Pre-configured common ABIs (ERC20 Transfer, Approve, WETH operations) for faster template creation.
+
+2. **Dynamic Form Generation**: Function arguments are dynamically generated from parsed ABI, with type hints for each input.
+
+3. **Placeholder Reference**: In-form documentation for all available placeholders helps managers construct templates without external docs.
+
+4. **Auto-Refresh**: Transaction history auto-refreshes every 5 seconds when there are pending/processing transactions.
+
+#### Key Files Created
+
+- `packages/shared/src/template/index.ts` - Template engine with placeholder parsing, extraction, and resolution
+- `packages/server/src/lib/alchemy.ts` - Alchemy balance fetching service
+- `packages/server/src/lib/transactionExecutor.ts` - Async transaction execution with ZeroDev integration
+- `packages/server/src/routes/transactions.ts` - Transaction API endpoints
+- `packages/client/src/components/TransactionForm.tsx` - Template builder modal
+- `packages/client/src/components/TransactionHistory.tsx` - Transaction list and detail view
+
+#### Dependencies Added
+
+- `@zerodev/permissions` on server for `deserializePermissionAccount`
+
+#### Next Steps for Phase 8
+
+1. Install Alchemy SDK for enhanced balance fetching
+2. Create balance display component with token icons
+3. Add refresh button for balance updates
+4. Optionally add USD value display with price feeds

@@ -7,6 +7,7 @@ import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
 import { swarmsRouter } from "./routes/swarms.js";
 import { membershipsRouter } from "./routes/memberships.js";
+import { transactionsRouter } from "./routes/transactions.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,6 +24,8 @@ app.use("/api/swarms", swarmsRouter);
 app.use("/api/memberships", membershipsRouter);
 // Also mount memberships router at /api for the /api/swarms/:id/join route
 app.use("/api", membershipsRouter);
+// Transaction routes are under /api for /api/swarms/:id/transactions and /api/transactions/:id
+app.use("/api", transactionsRouter);
 
 // Error handling
 app.use(errorHandler);

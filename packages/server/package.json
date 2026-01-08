@@ -20,6 +20,7 @@
     "@prisma/client": "^5.8.0",
     "@swarm-vault/shared": "workspace:*",
     "@zerodev/ecdsa-validator": "^5.4.9",
+    "@zerodev/permissions": "^5.4.9",
     "@zerodev/sdk": "^5.5.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

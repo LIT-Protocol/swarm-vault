@@ -166,12 +166,12 @@
 
 ---
 
-## Phase 7: Transaction Templating & Execution
+## Phase 7: Transaction Templating & Execution [COMPLETED]
 
 ### 7.1 Template Engine (packages/shared)
-- [ ] Define template placeholder types
-- [ ] Create template parser to extract placeholders from args
-- [ ] Create template resolver function:
+- [x] Define template placeholder types
+- [x] Create template parser to extract placeholders from args
+- [x] Create template resolver function:
   - `{{walletAddress}}` - agent wallet address
   - `{{ethBalance}}` - ETH balance in wei
   - `{{tokenBalance:0x...}}` - ERC20 token balance
@@ -180,13 +180,13 @@
   - `{{blockTimestamp}}` - current block timestamp
   - `{{deadline:N}}` - timestamp + N seconds
   - `{{slippage:amount:N}}` - amount minus N% (for minAmountOut)
-- [ ] Support ABI mode (encodeFunctionData with viem)
-- [ ] Support raw calldata mode (hex string with placeholder substitution)
-- [ ] Add validation for template structure
-- [ ] Unit tests for template resolution
+- [x] Support ABI mode (encodeFunctionData with viem)
+- [x] Support raw calldata mode (hex string with placeholder substitution)
+- [x] Add validation for template structure
+- [ ] Unit tests for template resolution - Deferred to Phase 9
 
 ### 7.2 Backend Transaction Flow
-- [ ] `POST /api/swarms/:id/transactions` - Execute transaction
+- [x] `POST /api/swarms/:id/transactions` - Execute transaction
   - Validate manager owns swarm
   - Validate template structure
   - Create Transaction record with template
@@ -196,19 +196,19 @@
     - Resolve template placeholders
     - Encode calldata
     - Create TransactionTarget with resolved data
-  - Call Lit Action to sign for all wallets
+  - Use deserialized permission account for PKP signing
   - Submit UserOps to bundler
   - Return transaction ID
-- [ ] `GET /api/swarms/:id/transactions` - List swarm transactions
-- [ ] `GET /api/transactions/:id` - Get transaction status/details
+- [x] `GET /api/swarms/:id/transactions` - List swarm transactions
+- [x] `GET /api/transactions/:id` - Get transaction status/details
 
 ### 7.3 Transaction Status Updates
-- [ ] Poll bundler for UserOp status
-- [ ] Update TransactionTarget status on confirmation
-- [ ] Update Transaction status when all targets complete
+- [x] Poll bundler for UserOp status
+- [x] Update TransactionTarget status on confirmation
+- [x] Update Transaction status when all targets complete
 
 ### 7.4 Manager Transaction UI
-- [ ] Transaction template builder form:
+- [x] Transaction template builder form:
   - Mode toggle: ABI mode vs Raw calldata mode
   - Contract address input
   - **ABI Mode:**
@@ -219,14 +219,14 @@
     - Hex data textarea with placeholder support
   - Placeholder insertion buttons (wallet address, balance, deadline, slippage, etc.)
   - ETH value input (with placeholder support)
-- [ ] Template preview showing resolved values for sample wallet
-- [ ] Transaction history list
-- [ ] Transaction detail view with per-member status
+- [ ] Template preview showing resolved values for sample wallet - Deferred to future
+- [x] Transaction history list
+- [x] Transaction detail view with per-member status
 
 ### 7.5 Common ABI Library (Future Enhancement)
-- [ ] Store common contract ABIs (Uniswap, ERC20, etc.)
-- [ ] Quick-select for common operations
-- [ ] Pre-built templates for common swaps
+- [x] Store common contract ABIs (ERC20 Transfer, Approve, WETH Deposit/Withdraw)
+- [x] Quick-select for common operations
+- [ ] Pre-built templates for common swaps - Deferred to future
 
 ---
 

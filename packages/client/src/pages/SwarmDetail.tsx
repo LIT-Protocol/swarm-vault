@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
+import TransactionForm from "../components/TransactionForm";
+import TransactionHistory from "../components/TransactionHistory";
 
 interface SwarmData {
   id: string;
@@ -32,6 +34,8 @@ export default function SwarmDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTxForm, setShowTxForm] = useState(false);
+  const [txRefreshTrigger, setTxRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchSwarm = async () => {
@@ -300,6 +304,50 @@ export default function SwarmDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Transactions Section (Manager Only) */}
+      {swarm.isManager && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Transactions
+            </h2>
+            <button
+              onClick={() => setShowTxForm(true)}
+              disabled={members.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              New Transaction
+            </button>
+          </div>
+
+          {members.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">
+                No members to execute transactions for
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                Wait for members to join before creating transactions
+              </p>
+            </div>
+          ) : (
+            <TransactionHistory
+              swarmId={id!}
+              refreshTrigger={txRefreshTrigger}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Transaction Form Modal */}
+      {swarm.isManager && (
+        <TransactionForm
+          swarmId={id!}
+          isOpen={showTxForm}
+          onClose={() => setShowTxForm(false)}
+          onSubmitted={() => setTxRefreshTrigger((n) => n + 1)}
+        />
       )}
     </div>
   );
