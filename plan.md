@@ -217,13 +217,52 @@ TransactionTarget
 2. Frontend calls Alchemy API to get ETH + ERC20 balances
 3. Balances displayed for each agent wallet
 
-### 6. User Withdraws (via WalletConnect)
+### 6. User Withdraws ERC20 (In-App)
+
+1. User views their agent wallet balance on MembershipDetail page
+2. Each token balance row has a "Withdraw" button
+3. User clicks "Withdraw" on desired token
+4. Modal opens showing:
+   - Token symbol and current balance
+   - Amount input (with "Max" button)
+   - Destination: user's MetaMask EOA (pre-filled, read-only)
+5. User clicks "Withdraw" in modal
+6. Client builds ERC20 transfer transaction
+7. User's MetaMask signs the transaction (as wallet owner)
+8. Transaction submitted via ZeroDev bundler
+9. Balance refreshes after confirmation
+
+### 7. User Withdraws (via WalletConnect) [Alternative]
 
 1. User clicks "Connect to dApp" button
 2. WalletConnect modal opens
 3. User connects to external dApp (e.g., Zerion)
 4. User initiates transfer from dApp
 5. Transaction signed by user's MetaMask (as wallet owner)
+
+### 8. Manager Executes Swap (Simplified)
+
+1. Manager navigates to swarm detail page
+2. Manager clicks "New Swap" button
+3. Swap form displays:
+   - "Sell" token dropdown (populated from common tokens + any tokens held by members)
+   - "Buy" token dropdown
+   - Amount type: "Percentage of balance" (default 100%) or "Fixed amount"
+   - Slippage tolerance input (default 1%)
+4. Manager clicks "Preview Swap"
+5. Backend calls 0x API `/swap/permit2/quote` for each member wallet:
+   - Gets best route across DEXs
+   - Returns expected output amounts per wallet
+6. Manager reviews preview showing:
+   - Per-member: input amount → expected output
+   - Total volume across all wallets
+   - Price impact warning if significant
+7. Manager clicks "Execute Swap"
+8. Backend builds transactions from 0x quote data:
+   - Approval transaction if needed (for Permit2)
+   - Swap transaction with 0x calldata
+9. Transactions signed via PKP and submitted
+10. Status updates shown in real-time
 
 ## API Endpoints
 
@@ -274,6 +313,9 @@ CHAIN_ID=84532  # 84532 = Base Sepolia, 8453 = Base Mainnet
 
 # Alchemy
 ALCHEMY_API_KEY=...
+
+# 0x DEX Aggregator
+ZEROX_API_KEY=...
 
 # Auth
 JWT_SECRET=...
@@ -753,9 +795,102 @@ const permissionAccount = await deserializePermissionAccount(
 );
 ```
 
-#### Next Steps for Phase 8
+### Phase 8 Learnings (Balance Display)
 
-1. Install Alchemy SDK for enhanced balance fetching
-2. Create balance display component with token icons
-3. Add refresh button for balance updates
-4. Optionally add USD value display with price feeds
+**Completed:** 2025-01-08
+
+#### Alchemy Integration Approach
+
+1. **No SDK Needed**: Using Alchemy's JSON-RPC API directly with `fetch`. The Alchemy SDK would add overhead without significant benefit for our use case.
+
+2. **Dynamic Token Discovery**: Uses `alchemy_getTokenBalances` with `"erc20"` tokenSpec to automatically discover all ERC-20 tokens in the wallet. No need to maintain a hardcoded token list.
+
+3. **Token Metadata**: Uses `alchemy_getTokenMetadata` to fetch symbol, name, decimals, and logo for each discovered token. Metadata is permanently cached since tokens don't change.
+
+4. **Balance Caching**: Implemented in-memory cache with 30-second TTL to reduce RPC calls. The `getWalletBalancesForDisplay` function checks cache first and supports a `forceRefresh` parameter.
+
+#### Balance API Endpoint
+
+1. **Route Design**: `GET /api/memberships/:id/balance` fetches balances for a membership's agent wallet. Accepts `?refresh=true` query param to bypass cache.
+
+2. **Response Structure**: Returns ETH balance, token balances array with metadata, and cache information (fetchedAt timestamp, cached boolean).
+
+3. **Authorization**: Only the membership owner can view their wallet balance, enforced via JWT authentication.
+
+#### Frontend Balance Component
+
+1. **Loading States**: Separate `isLoading` (initial load) and `isRefreshing` (manual refresh) states for appropriate UI feedback.
+
+2. **Balance Formatting**: Using viem's `formatUnits` for proper decimal handling. Custom formatting handles very small amounts, showing "<0.0001" instead of scientific notation.
+
+3. **Empty State**: Shows helpful message when wallet has no balance, prompting user to deposit funds.
+
+4. **Visual Design**: Token icons from CoinGecko CDN with fallback to colored circle with symbol initial. ETH gets a custom gradient avatar.
+
+5. **Network Indicator**: Shows current network (Base Mainnet vs Sepolia) and last update time in footer.
+
+#### Key Files Created/Modified
+
+- `packages/server/src/lib/alchemy.ts` - Added `alchemy_getTokenBalances` and `alchemy_getTokenMetadata` API calls, caching, and `getWalletBalancesForDisplay` function
+- `packages/server/src/routes/memberships.ts` - Added balance endpoint
+- `packages/client/src/components/BalanceDisplay.tsx` - New balance display component
+- `packages/client/src/pages/MembershipDetail.tsx` - Integrated BalanceDisplay component
+
+#### Next Steps for Phase 9
+
+1. Add 0x API integration for swap quotes
+2. Create swap preview and execution endpoints
+3. Build manager swap UI
+
+### Phase 8.5 Learnings (User ERC20 Withdrawal)
+
+**Completed:** 2025-01-08
+
+#### Client-Side Smart Wallet Architecture
+
+1. **User as Sudo Validator**: The user's connected wallet (via wagmi) acts as the sudo/owner validator of their agent wallet. This means the user can directly sign transactions as the owner without needing the PKP.
+
+2. **ZeroDev Client-Side Integration**: Created client-side withdrawal functions that:
+   - Use `signerToEcdsaValidator` with the user's wallet client as the signer
+   - Create a kernel account with the user as sudo validator
+   - Use `createKernelAccountClient` with paymaster for gas sponsorship
+   - Submit UserOperations directly to the bundler
+
+3. **Wallet Address Verification**: Added verification step to ensure the computed kernel account address matches the stored agent wallet address. This prevents signing for the wrong account.
+
+4. **Index Consistency**: The withdrawal functions use `swarmIdToIndex` to derive the same deterministic index used during wallet creation, ensuring the correct kernel account is reconstructed.
+
+#### Withdrawal Flow
+
+1. **Unified Pattern for ETH and ERC20**: Both `withdrawETH` and `withdrawToken` functions follow the same pattern:
+   - Create ECDSA validator with user's wallet
+   - Create kernel account
+   - Create kernel client with paymaster
+   - Encode and submit UserOperation
+   - Wait for confirmation
+
+2. **ERC20 Transfer Encoding**: Using viem's `encodeFunctionData` with a minimal ERC20 transfer ABI to build the calldata.
+
+3. **Native ETH Transfer**: For ETH withdrawals, the call has `value: amount` and `data: "0x"` (empty calldata).
+
+#### Modal UX Design
+
+1. **Status States**: Implemented multiple status states (idle, preparing, signing, submitting, confirming, success, error) to provide clear feedback during the withdrawal process.
+
+2. **Validation**: Amount validation checks for valid number format and balance limits before enabling the withdraw button.
+
+3. **Auto-Refresh**: Balance is automatically refreshed after a successful withdrawal, with the modal closing after a brief delay to show success state.
+
+4. **Error Display**: User-friendly error messages are displayed, with the full error available for debugging in the console.
+
+#### Environment Configuration
+
+1. **VITE_ZERODEV_PROJECT_ID**: Added client-side environment variable for ZeroDev project ID, required for bundler/paymaster RPC URL construction.
+
+#### Key Files Created/Modified
+
+- `packages/client/src/lib/smartWallet.ts` - Added `withdrawToken`, `withdrawETH`, `getZeroDevRpcUrl` functions
+- `packages/client/src/components/WithdrawModal.tsx` - New modal component for withdrawal UI
+- `packages/client/src/components/BalanceDisplay.tsx` - Added withdraw buttons and modal integration
+- `packages/client/src/pages/MembershipDetail.tsx` - Updated to pass required props to BalanceDisplay
+- `.env.example` - Added `VITE_ZERODEV_PROJECT_ID` variable

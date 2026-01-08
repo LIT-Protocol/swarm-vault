@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
+import BalanceDisplay from "../components/BalanceDisplay";
 
 interface MembershipDetailData {
   id: string;
@@ -261,22 +262,12 @@ export default function MembershipDetail() {
         </ol>
       </div>
 
-      {/* Balance Display - Coming in Phase 8 */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Balance</h2>
-        <p className="text-gray-500 text-sm">
-          Balance display coming soon. Use a block explorer to check your wallet
-          balance.
-        </p>
-        <a
-          href={`https://sepolia.basescan.org/address/${membership.agentWalletAddress}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block mt-2 text-blue-600 hover:text-blue-800 text-sm"
-        >
-          View on BaseScan &rarr;
-        </a>
-      </div>
+      {/* Balance Display */}
+      <BalanceDisplay
+        membershipId={membership.id}
+        agentWalletAddress={membership.agentWalletAddress}
+        swarmId={membership.swarmId}
+      />
 
       {/* Leave Swarm */}
       <div className="bg-white shadow rounded-lg p-6">

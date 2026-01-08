@@ -31,6 +31,57 @@ export const BASE_CONTRACTS = {
   },
 } as const;
 
+// Token metadata for display
+export interface TokenInfo {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl?: string;
+}
+
+// Common tokens on Base Sepolia
+export const BASE_SEPOLIA_TOKENS: TokenInfo[] = [
+  {
+    address: "0x4200000000000000000000000000000000000006",
+    symbol: "WETH",
+    name: "Wrapped Ether",
+    decimals: 18,
+    logoUrl: "https://assets.coingecko.com/coins/images/2518/small/weth.png",
+  },
+  {
+    address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    logoUrl: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",
+  },
+];
+
+// Common tokens on Base Mainnet
+export const BASE_MAINNET_TOKENS: TokenInfo[] = [
+  {
+    address: "0x4200000000000000000000000000000000000006",
+    symbol: "WETH",
+    name: "Wrapped Ether",
+    decimals: 18,
+    logoUrl: "https://assets.coingecko.com/coins/images/2518/small/weth.png",
+  },
+  {
+    address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    logoUrl: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",
+  },
+];
+
+// Get tokens for a chain
+export function getTokensForChain(chainId: number): TokenInfo[] {
+  if (chainId === 8453) return BASE_MAINNET_TOKENS;
+  return BASE_SEPOLIA_TOKENS;
+}
+
 // API routes
 export const API_ROUTES = {
   AUTH: {

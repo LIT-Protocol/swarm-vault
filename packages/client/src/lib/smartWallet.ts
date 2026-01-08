@@ -2,14 +2,21 @@ import {
   createPublicClient,
   http,
   getAddress,
+  encodeFunctionData,
   type Address,
   type WalletClient,
   type Transport,
   type Chain,
   type Account,
+  type Hex,
 } from "viem";
 import { baseSepolia, base } from "viem/chains";
-import { createKernelAccount, addressToEmptyAccount } from "@zerodev/sdk";
+import {
+  createKernelAccount,
+  addressToEmptyAccount,
+  createKernelAccountClient,
+  createZeroDevPaymasterClient,
+} from "@zerodev/sdk";
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import { toSudoPolicy } from "@zerodev/permissions/policies";
@@ -18,6 +25,19 @@ import {
   serializePermissionAccount,
 } from "@zerodev/permissions";
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
+
+// ERC20 ABI for transfer
+const ERC20_TRANSFER_ABI = [
+  {
+    name: "transfer",
+    type: "function",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
 
 // Get chain based on env
 const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 84532);
@@ -131,4 +151,283 @@ export function swarmIdToIndex(swarmId: string): bigint {
     hash = (hash * 31n + BigInt(swarmId.charCodeAt(i))) % (2n ** 64n);
   }
   return hash;
+}
+
+// ============================================================================
+// Withdrawal Functions
+// ============================================================================
+
+/**
+ * Get the ZeroDev RPC URL for bundler/paymaster
+ */
+function getZeroDevRpcUrl(): string {
+  const projectId = import.meta.env.VITE_ZERODEV_PROJECT_ID;
+  if (!projectId) {
+    throw new Error("VITE_ZERODEV_PROJECT_ID is required for withdrawals");
+  }
+  return `https://rpc.zerodev.app/api/v3/${projectId}/chain/${CHAIN_ID}`;
+}
+
+export interface WithdrawTokenParams {
+  /** The user's wallet client (from wagmi's useWalletClient) */
+  walletClient: WalletClient<Transport, Chain, Account>;
+  /** The agent wallet address (smart account address) */
+  agentWalletAddress: Address;
+  /** The token contract address */
+  tokenAddress: Address;
+  /** The amount to withdraw (in token's smallest unit) */
+  amount: bigint;
+  /** The destination address (user's EOA) */
+  destinationAddress: Address;
+  /** Unique index for this wallet (same as used when creating) */
+  index?: bigint;
+}
+
+export interface WithdrawResult {
+  /** Whether the withdrawal was successful */
+  success: boolean;
+  /** The transaction hash */
+  txHash?: string;
+  /** UserOperation hash */
+  userOpHash?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Withdraw ERC20 tokens from the agent wallet to the user's EOA.
+ * The user signs as the owner (sudo validator) of the smart account.
+ *
+ * @param params - Parameters for the withdrawal
+ * @returns The transaction result
+ */
+export async function withdrawToken(
+  params: WithdrawTokenParams
+): Promise<WithdrawResult> {
+  const {
+    walletClient,
+    agentWalletAddress,
+    tokenAddress,
+    amount,
+    destinationAddress,
+    index = 0n,
+  } = params;
+
+  console.log("=== Withdrawing ERC20 Token ===");
+  console.log("Token:", tokenAddress);
+  console.log("Amount:", amount.toString());
+  console.log("To:", destinationAddress);
+  console.log("From Agent Wallet:", agentWalletAddress);
+
+  try {
+    // Create ECDSA validator using the user's wallet client (owner)
+    const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
+      signer: walletClient,
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    });
+
+    // Create kernel account with user as sudo (owner)
+    const kernelAccount = await createKernelAccount(publicClient, {
+      entryPoint: ENTRY_POINT,
+      plugins: {
+        sudo: ecdsaValidator,
+      },
+      kernelVersion: KERNEL_VERSION,
+      index,
+    });
+
+    // Verify the address matches
+    if (kernelAccount.address.toLowerCase() !== agentWalletAddress.toLowerCase()) {
+      throw new Error(
+        `Wallet address mismatch. Expected ${agentWalletAddress}, got ${kernelAccount.address}`
+      );
+    }
+
+    // Get ZeroDev RPC URL and create clients
+    const rpcUrl = getZeroDevRpcUrl();
+
+    // Create paymaster client for sponsored transactions
+    const paymasterClient = createZeroDevPaymasterClient({
+      chain,
+      transport: http(rpcUrl),
+    });
+
+    // Create kernel account client
+    const kernelClient = createKernelAccountClient({
+      account: kernelAccount,
+      chain,
+      bundlerTransport: http(rpcUrl),
+      client: publicClient,
+      paymaster: {
+        getPaymasterData(userOperation) {
+          return paymasterClient.sponsorUserOperation({ userOperation });
+        },
+      },
+    });
+
+    // Encode ERC20 transfer call
+    const transferData = encodeFunctionData({
+      abi: ERC20_TRANSFER_ABI,
+      functionName: "transfer",
+      args: [destinationAddress, amount],
+    });
+
+    // Encode the call and send
+    const callData = await kernelClient.account.encodeCalls([
+      {
+        to: tokenAddress,
+        value: 0n,
+        data: transferData,
+      },
+    ]);
+
+    console.log("Submitting UserOperation...");
+    const userOpHash = await kernelClient.sendUserOperation({
+      callData,
+    });
+    console.log("UserOperation submitted:", userOpHash);
+
+    // Wait for confirmation
+    console.log("Waiting for confirmation...");
+    const receipt = await kernelClient.waitForUserOperationReceipt({
+      hash: userOpHash,
+      timeout: 60000, // 60 second timeout
+    });
+
+    console.log("Transaction confirmed:", receipt.receipt.transactionHash);
+
+    return {
+      success: true,
+      txHash: receipt.receipt.transactionHash,
+      userOpHash: userOpHash,
+    };
+  } catch (error) {
+    console.error("Withdrawal failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export interface WithdrawETHParams {
+  /** The user's wallet client (from wagmi's useWalletClient) */
+  walletClient: WalletClient<Transport, Chain, Account>;
+  /** The agent wallet address (smart account address) */
+  agentWalletAddress: Address;
+  /** The amount of ETH to withdraw (in wei) */
+  amount: bigint;
+  /** The destination address (user's EOA) */
+  destinationAddress: Address;
+  /** Unique index for this wallet (same as used when creating) */
+  index?: bigint;
+}
+
+/**
+ * Withdraw native ETH from the agent wallet to the user's EOA.
+ * The user signs as the owner (sudo validator) of the smart account.
+ *
+ * @param params - Parameters for the withdrawal
+ * @returns The transaction result
+ */
+export async function withdrawETH(
+  params: WithdrawETHParams
+): Promise<WithdrawResult> {
+  const {
+    walletClient,
+    agentWalletAddress,
+    amount,
+    destinationAddress,
+    index = 0n,
+  } = params;
+
+  console.log("=== Withdrawing ETH ===");
+  console.log("Amount:", amount.toString(), "wei");
+  console.log("To:", destinationAddress);
+  console.log("From Agent Wallet:", agentWalletAddress);
+
+  try {
+    // Create ECDSA validator using the user's wallet client (owner)
+    const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
+      signer: walletClient,
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    });
+
+    // Create kernel account with user as sudo (owner)
+    const kernelAccount = await createKernelAccount(publicClient, {
+      entryPoint: ENTRY_POINT,
+      plugins: {
+        sudo: ecdsaValidator,
+      },
+      kernelVersion: KERNEL_VERSION,
+      index,
+    });
+
+    // Verify the address matches
+    if (kernelAccount.address.toLowerCase() !== agentWalletAddress.toLowerCase()) {
+      throw new Error(
+        `Wallet address mismatch. Expected ${agentWalletAddress}, got ${kernelAccount.address}`
+      );
+    }
+
+    // Get ZeroDev RPC URL and create clients
+    const rpcUrl = getZeroDevRpcUrl();
+
+    // Create paymaster client for sponsored transactions
+    const paymasterClient = createZeroDevPaymasterClient({
+      chain,
+      transport: http(rpcUrl),
+    });
+
+    // Create kernel account client
+    const kernelClient = createKernelAccountClient({
+      account: kernelAccount,
+      chain,
+      bundlerTransport: http(rpcUrl),
+      client: publicClient,
+      paymaster: {
+        getPaymasterData(userOperation) {
+          return paymasterClient.sponsorUserOperation({ userOperation });
+        },
+      },
+    });
+
+    // Encode native ETH transfer
+    const callData = await kernelClient.account.encodeCalls([
+      {
+        to: destinationAddress,
+        value: amount,
+        data: "0x" as Hex,
+      },
+    ]);
+
+    console.log("Submitting UserOperation...");
+    const userOpHash = await kernelClient.sendUserOperation({
+      callData,
+    });
+    console.log("UserOperation submitted:", userOpHash);
+
+    // Wait for confirmation
+    console.log("Waiting for confirmation...");
+    const receipt = await kernelClient.waitForUserOperationReceipt({
+      hash: userOpHash,
+      timeout: 60000, // 60 second timeout
+    });
+
+    console.log("Transaction confirmed:", receipt.receipt.transactionHash);
+
+    return {
+      success: true,
+      txHash: receipt.receipt.transactionHash,
+      userOpHash: userOpHash,
+    };
+  } catch (error) {
+    console.error("ETH Withdrawal failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }

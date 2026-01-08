@@ -230,40 +230,114 @@
 
 ---
 
-## Phase 8: Balance Display
+## Phase 8: Balance Display [COMPLETED]
 
 ### 8.1 Alchemy Integration
-- [ ] Install Alchemy SDK
-- [ ] Create balance fetching service
-  - Get ETH balance
-  - Get ERC20 token balances
-- [ ] Cache balances with reasonable TTL
+- [x] Using Alchemy JSON-RPC API directly (no SDK needed)
+- [x] Create balance fetching service
+  - Get ETH balance via viem
+  - Get all ERC20 token balances via `alchemy_getTokenBalances` (automatic discovery)
+  - Get token metadata via `alchemy_getTokenMetadata`
+- [x] Cache balances with 30s TTL (in-memory cache)
+- [x] Cache token metadata permanently (tokens don't change)
 
 ### 8.2 Balance UI
-- [ ] Balance display component
-- [ ] Token list with icons/names
-- [ ] USD value display (optional, requires price feed)
-- [ ] Refresh balance button
+- [x] Balance display component with loading/error states
+- [x] Token list with icons/names from Alchemy metadata API
+- [ ] USD value display (optional, requires price feed) - Deferred to future
+- [x] Refresh balance button with visual feedback
 
 ---
 
-## Phase 9: Polish & Testing
+## Phase 8.5: User ERC20 Withdrawal [COMPLETED]
 
-### 9.1 Error Handling
+### 8.5.1 Withdrawal UI Component
+- [x] Add "Withdraw" button to each token row in BalanceDisplay component
+- [x] Create WithdrawModal component
+  - Token symbol and balance display
+  - Amount input with validation
+  - "Max" button to fill full balance
+  - Destination address (pre-filled with user's EOA, read-only)
+  - Withdraw button with loading state
+  - Error/success feedback
+
+### 8.5.2 Client-Side Transaction Building
+- [x] Create withdrawal function in smartWallet.ts
+  - Build ERC20 transfer calldata (to user's EOA)
+  - Create kernel account client with user as signer
+  - Submit UserOp via ZeroDev bundler
+  - Handle gas sponsorship via paymaster
+- [x] Handle ETH withdrawal (native transfer, not ERC20)
+
+### 8.5.3 Integration
+- [x] Wire up WithdrawModal to BalanceDisplay
+- [x] Refresh balances after successful withdrawal
+- [x] Add transaction status feedback (pending → confirmed)
+- [x] Handle errors gracefully (insufficient balance, gas issues)
+
+---
+
+## Phase 9: Manager Swap UI (0x Integration)
+
+### 9.1 0x API Integration
+- [ ] Add 0x API key to environment variables
+- [ ] Create `packages/server/src/lib/zeroEx.ts` service
+  - Get swap quote via `/swap/permit2/quote`
+  - Handle token price lookups
+  - Support Base network (chain ID 8453 / 84532 for testnet)
+- [ ] Add common token list for Base (USDC, WETH, DAI, etc.)
+- [ ] Create endpoint `POST /api/swarms/:id/swap/preview`
+  - Accept: sellToken, buyToken, sellAmountPercentage or sellAmountFixed, slippage
+  - For each member: fetch balance, call 0x for quote
+  - Return: per-member preview (sellAmount, expectedBuyAmount, route)
+
+### 9.2 Swap Execution
+- [ ] Create endpoint `POST /api/swarms/:id/swap/execute`
+  - Build approval tx if needed (Permit2 approval)
+  - Build swap tx from 0x quote data
+  - Execute via existing transaction infrastructure (PKP signing)
+  - Return transaction ID for status tracking
+- [ ] Handle multi-step transactions (approve + swap)
+- [ ] Add swap-specific status tracking
+
+### 9.3 Manager Swap UI
+- [ ] Create SwapForm component
+  - Sell token selector (dropdown with search)
+  - Buy token selector
+  - Amount input: percentage slider (default 100%) or fixed amount toggle
+  - Slippage tolerance input (default 1%)
+  - "Preview Swap" button
+- [ ] Create SwapPreview component
+  - Table showing per-member: wallet, sell amount, expected buy amount
+  - Total volume summary
+  - Price impact warning (if > 2%)
+  - "Execute Swap" button
+- [ ] Add SwapHistory component (reuse TransactionHistory with swap-specific display)
+
+### 9.4 Token Management
+- [ ] Fetch aggregate token holdings across all swarm members
+- [ ] Show "held tokens" in sell dropdown for easy selection
+- [ ] Token logo/symbol display from Alchemy metadata or token list
+
+---
+
+## Phase 10: Polish & Testing
+
+### 10.1 Error Handling
 - [ ] Add comprehensive error handling to all endpoints
 - [ ] Create user-friendly error messages
 - [ ] Add error boundaries to React
 
-### 9.2 Loading States
+### 10.2 Loading States
 - [ ] Add loading skeletons/spinners
 - [ ] Optimistic updates where appropriate
 
-### 9.3 Testing
+### 10.3 Testing
 - [ ] Unit tests for critical utilities
 - [ ] Integration tests for API endpoints
 - [ ] E2E tests for critical flows
 
-### 9.4 Documentation
+### 10.4 Documentation
 - [ ] API documentation
 - [ ] Setup instructions in README
 - [ ] Environment variable documentation
@@ -272,17 +346,17 @@
 
 ## Future Phases (Not for MVP)
 
-### Phase 10: WalletConnect Integration
+### Phase 11: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 11: Transaction Simulation
+### Phase 12: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 12: Advanced Features
+### Phase 13: Advanced Features
 - [ ] Spending limits per user
 - [ ] Manager multi-sig
 - [ ] Fee collection

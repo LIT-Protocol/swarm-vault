@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { z } from "zod";
+import { getWalletBalancesForDisplay, getCurrentChainId } from "../lib/alchemy.js";
+import { type Address } from "viem";
 
 const router = Router();
 
@@ -332,6 +334,60 @@ router.post("/:id/leave", authMiddleware, async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       error: "Failed to leave swarm",
+    });
+  }
+});
+
+// GET /api/memberships/:id/balance - Get agent wallet balance
+router.get("/:id/balance", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.userId;
+    const refresh = req.query.refresh === "true";
+
+    const membership = await prisma.swarmMembership.findUnique({
+      where: { id },
+    });
+
+    if (!membership) {
+      res.status(404).json({
+        success: false,
+        error: "Membership not found",
+      });
+      return;
+    }
+
+    // Ensure user owns this membership
+    if (membership.userId !== userId) {
+      res.status(403).json({
+        success: false,
+        error: "You do not have access to this membership",
+      });
+      return;
+    }
+
+    // Fetch balances with caching
+    const balances = await getWalletBalancesForDisplay(
+      membership.agentWalletAddress as Address,
+      refresh
+    );
+
+    res.json({
+      success: true,
+      data: {
+        walletAddress: membership.agentWalletAddress,
+        chainId: getCurrentChainId(),
+        ethBalance: balances.ethBalance,
+        tokens: balances.tokens,
+        fetchedAt: balances.fetchedAt,
+        cached: !refresh && Date.now() - balances.fetchedAt > 1000,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to get balance:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get balance",
     });
   }
 });
