@@ -894,3 +894,66 @@ const permissionAccount = await deserializePermissionAccount(
 - `packages/client/src/components/BalanceDisplay.tsx` - Added withdraw buttons and modal integration
 - `packages/client/src/pages/MembershipDetail.tsx` - Updated to pass required props to BalanceDisplay
 - `.env.example` - Added `VITE_ZERODEV_PROJECT_ID` variable
+
+### Phase 9 Learnings (Manager Swap UI)
+
+**Completed:** 2025-01-09
+
+#### 0x API Integration
+
+1. **API Version**: Used 0x Swap API v1 (`/swap/v1/price` for preview, `/swap/v1/quote` for execution). The API requires an API key passed via `0x-api-key` header.
+
+2. **Quote vs Price Endpoints**:
+   - `/swap/v1/price` - Lightweight endpoint for previews, returns expected amounts without transaction data
+   - `/swap/v1/quote` - Full endpoint with transaction data for execution, includes `transaction.to`, `transaction.data`, and `allowanceTarget`
+
+3. **Native ETH Handling**: 0x uses `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` as a special address for native ETH in swaps.
+
+4. **Allowance Target**: The 0x API returns an `allowanceTarget` address where ERC20 approvals should be directed. This may differ from the swap router address.
+
+#### Swap Execution Architecture
+
+1. **Multi-Call Pattern**: Used ZeroDev's `encodeCalls` to batch approval and swap transactions into a single UserOperation. This provides atomicity and saves gas.
+
+2. **Approval Strategy**: Before each swap, check the current allowance. If insufficient, add an approval call for max uint256 to the calls array. This ensures the swap has sufficient allowance.
+
+3. **Reusing Transaction Infrastructure**: Created `swapExecutor.ts` following the same pattern as `transactionExecutor.ts`. Both use `deserializePermissionAccount` with PKP signer and create TransactionTarget records for status tracking.
+
+#### Frontend Swap Flow
+
+1. **Step-Based Modal**: Implemented a multi-step flow in a single component:
+   - `form` - Token selection, percentage, slippage
+   - `preview` - Show expected outcomes per member
+   - `executing` - Loading state during submission
+   - `done` - Success confirmation
+
+2. **Holdings Aggregation**: Created `/api/swarms/:id/holdings` endpoint that aggregates token balances across all swarm members. This populates the "sell" dropdown with tokens actually held by members.
+
+3. **Token Lists**: Combined approach of showing:
+   - Held tokens with balances (from holdings endpoint)
+   - Common tokens for the chain (from shared constants)
+   - This allows swapping into tokens not currently held
+
+4. **Percentage-Based Amounts**: Default to 100% of balance for simplicity. The percentage slider allows managers to swap partial balances across all members uniformly.
+
+#### Key Files Created
+
+- `packages/server/src/lib/zeroEx.ts` - 0x API service with quote/price functions
+- `packages/server/src/lib/swapExecutor.ts` - Async swap execution with approval handling
+- `packages/server/src/routes/swap.ts` - Swap API endpoints (preview, execute, holdings)
+- `packages/client/src/components/SwapForm.tsx` - Multi-step swap UI component
+
+#### Key Files Modified
+
+- `packages/shared/src/constants/index.ts` - Added NATIVE_ETH constant, extended token lists, added swap API routes
+- `packages/server/src/lib/env.ts` - Added ZEROX_API_KEY validation
+- `packages/server/src/index.ts` - Registered swap router
+- `packages/client/src/pages/SwarmDetail.tsx` - Added "New Swap" button and SwapForm modal
+- `.env.example` - Added ZEROX_API_KEY
+
+#### Next Steps for Phase 10
+
+1. Add comprehensive error handling and user-friendly messages
+2. Add loading skeletons and optimistic updates
+3. Write unit tests for template engine and critical utilities
+4. Create API documentation

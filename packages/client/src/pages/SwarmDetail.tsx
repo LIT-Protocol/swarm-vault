@@ -4,6 +4,7 @@ import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import TransactionForm from "../components/TransactionForm";
 import TransactionHistory from "../components/TransactionHistory";
+import SwapForm from "../components/SwapForm";
 
 interface SwarmData {
   id: string;
@@ -35,6 +36,7 @@ export default function SwarmDetail() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTxForm, setShowTxForm] = useState(false);
+  const [showSwapForm, setShowSwapForm] = useState(false);
   const [txRefreshTrigger, setTxRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -313,13 +315,22 @@ export default function SwarmDetail() {
             <h2 className="text-xl font-semibold text-gray-900">
               Transactions
             </h2>
-            <button
-              onClick={() => setShowTxForm(true)}
-              disabled={members.length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              New Transaction
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSwapForm(true)}
+                disabled={members.length === 0}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                New Swap
+              </button>
+              <button
+                onClick={() => setShowTxForm(true)}
+                disabled={members.length === 0}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                New Transaction
+              </button>
+            </div>
           </div>
 
           {members.length === 0 ? (
@@ -346,6 +357,16 @@ export default function SwarmDetail() {
           swarmId={id!}
           isOpen={showTxForm}
           onClose={() => setShowTxForm(false)}
+          onSubmitted={() => setTxRefreshTrigger((n) => n + 1)}
+        />
+      )}
+
+      {/* Swap Form Modal */}
+      {swarm.isManager && (
+        <SwapForm
+          swarmId={id!}
+          isOpen={showSwapForm}
+          onClose={() => setShowSwapForm(false)}
           onSubmitted={() => setTxRefreshTrigger((n) => n + 1)}
         />
       )}

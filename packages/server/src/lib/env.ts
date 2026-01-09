@@ -7,6 +7,7 @@ const envSchema = z.object({
   ZERODEV_PROJECT_ID: z.string().optional(),
   CHAIN_ID: z.coerce.number().default(84532),
   ALCHEMY_API_KEY: z.string().optional(),
+  ZEROX_API_KEY: z.string().optional(),
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

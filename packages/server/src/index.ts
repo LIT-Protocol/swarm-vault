@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.js";
 import { swarmsRouter } from "./routes/swarms.js";
 import { membershipsRouter } from "./routes/memberships.js";
 import { transactionsRouter } from "./routes/transactions.js";
+import { swapRouter } from "./routes/swap.js";
 import { pollPendingTransactions } from "./lib/transactionExecutor.js";
 
 const app = express();
@@ -27,6 +28,8 @@ app.use("/api/memberships", membershipsRouter);
 app.use("/api", membershipsRouter);
 // Transaction routes are under /api for /api/swarms/:id/transactions and /api/transactions/:id
 app.use("/api", transactionsRouter);
+// Swap routes are under /api/swarms/:id/swap/*
+app.use("/api/swarms", swapRouter);
 
 // Error handling
 app.use(errorHandler);

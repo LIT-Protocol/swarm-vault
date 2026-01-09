@@ -277,47 +277,50 @@
 
 ---
 
-## Phase 9: Manager Swap UI (0x Integration)
+## Phase 9: Manager Swap UI (0x Integration) [COMPLETED]
 
 ### 9.1 0x API Integration
-- [ ] Add 0x API key to environment variables
-- [ ] Create `packages/server/src/lib/zeroEx.ts` service
-  - Get swap quote via `/swap/permit2/quote`
-  - Handle token price lookups
+- [x] Add 0x API key to environment variables
+- [x] Create `packages/server/src/lib/zeroEx.ts` service
+  - Get swap quote via `/swap/v1/quote`
+  - Handle token price lookups via `/swap/v1/price`
   - Support Base network (chain ID 8453 / 84532 for testnet)
-- [ ] Add common token list for Base (USDC, WETH, DAI, etc.)
-- [ ] Create endpoint `POST /api/swarms/:id/swap/preview`
-  - Accept: sellToken, buyToken, sellAmountPercentage or sellAmountFixed, slippage
+- [x] Add common token list for Base (ETH, WETH, USDC, DAI, USDbC, cbETH)
+- [x] Create endpoint `POST /api/swarms/:id/swap/preview`
+  - Accept: sellToken, buyToken, sellPercentage, slippagePercentage
   - For each member: fetch balance, call 0x for quote
-  - Return: per-member preview (sellAmount, expectedBuyAmount, route)
+  - Return: per-member preview (sellAmount, buyAmount, estimatedPriceImpact)
+- [x] Create endpoint `GET /api/swarms/:id/holdings`
+  - Aggregate token holdings across all swarm members
+  - Return total ETH balance, tokens with total balances and holder count
 
 ### 9.2 Swap Execution
-- [ ] Create endpoint `POST /api/swarms/:id/swap/execute`
-  - Build approval tx if needed (Permit2 approval)
+- [x] Create endpoint `POST /api/swarms/:id/swap/execute`
+  - Build approval tx if needed (ERC20 approve to allowanceTarget)
   - Build swap tx from 0x quote data
   - Execute via existing transaction infrastructure (PKP signing)
   - Return transaction ID for status tracking
-- [ ] Handle multi-step transactions (approve + swap)
-- [ ] Add swap-specific status tracking
+- [x] Handle multi-step transactions (approve + swap via encodeCalls)
+- [x] Reuse existing transaction status tracking
 
 ### 9.3 Manager Swap UI
-- [ ] Create SwapForm component
-  - Sell token selector (dropdown with search)
+- [x] Create SwapForm component (with integrated preview)
+  - Sell token selector (dropdown with held tokens + common tokens)
   - Buy token selector
-  - Amount input: percentage slider (default 100%) or fixed amount toggle
-  - Slippage tolerance input (default 1%)
+  - Amount input: percentage slider (1-100%)
+  - Slippage tolerance input (preset buttons + custom input)
   - "Preview Swap" button
-- [ ] Create SwapPreview component
+- [x] Create SwapPreview (integrated into SwapForm as step)
   - Table showing per-member: wallet, sell amount, expected buy amount
   - Total volume summary
-  - Price impact warning (if > 2%)
+  - Success/error count display
   - "Execute Swap" button
-- [ ] Add SwapHistory component (reuse TransactionHistory with swap-specific display)
+- [x] Reuse TransactionHistory for swap display
 
 ### 9.4 Token Management
-- [ ] Fetch aggregate token holdings across all swarm members
-- [ ] Show "held tokens" in sell dropdown for easy selection
-- [ ] Token logo/symbol display from Alchemy metadata or token list
+- [x] Fetch aggregate token holdings via /api/swarms/:id/holdings
+- [x] Show "held tokens" in sell dropdown for easy selection
+- [x] Token metadata from Alchemy + common token list
 
 ---
 

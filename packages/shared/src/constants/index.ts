@@ -40,8 +40,18 @@ export interface TokenInfo {
   logoUrl?: string;
 }
 
+// Native ETH representation for swap UIs
+export const NATIVE_ETH: TokenInfo = {
+  address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+  symbol: "ETH",
+  name: "Ethereum",
+  decimals: 18,
+  logoUrl: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+};
+
 // Common tokens on Base Sepolia
 export const BASE_SEPOLIA_TOKENS: TokenInfo[] = [
+  NATIVE_ETH,
   {
     address: "0x4200000000000000000000000000000000000006",
     symbol: "WETH",
@@ -60,6 +70,7 @@ export const BASE_SEPOLIA_TOKENS: TokenInfo[] = [
 
 // Common tokens on Base Mainnet
 export const BASE_MAINNET_TOKENS: TokenInfo[] = [
+  NATIVE_ETH,
   {
     address: "0x4200000000000000000000000000000000000006",
     symbol: "WETH",
@@ -73,6 +84,27 @@ export const BASE_MAINNET_TOKENS: TokenInfo[] = [
     name: "USD Coin",
     decimals: 6,
     logoUrl: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",
+  },
+  {
+    address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+    symbol: "DAI",
+    name: "Dai Stablecoin",
+    decimals: 18,
+    logoUrl: "https://assets.coingecko.com/coins/images/9956/small/Badge_Dai.png",
+  },
+  {
+    address: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
+    symbol: "USDbC",
+    name: "USD Base Coin",
+    decimals: 6,
+    logoUrl: "https://assets.coingecko.com/coins/images/31164/small/usdbc.png",
+  },
+  {
+    address: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+    symbol: "cbETH",
+    name: "Coinbase Wrapped Staked ETH",
+    decimals: 18,
+    logoUrl: "https://assets.coingecko.com/coins/images/27008/small/cbeth.png",
   },
 ];
 
@@ -96,6 +128,9 @@ export const API_ROUTES = {
     MEMBERS: (id: string) => `/api/swarms/${id}/members`,
     JOIN: (id: string) => `/api/swarms/${id}/join`,
     TRANSACTIONS: (id: string) => `/api/swarms/${id}/transactions`,
+    SWAP_PREVIEW: (id: string) => `/api/swarms/${id}/swap/preview`,
+    SWAP_EXECUTE: (id: string) => `/api/swarms/${id}/swap/execute`,
+    AGGREGATE_HOLDINGS: (id: string) => `/api/swarms/${id}/holdings`,
   },
   MEMBERSHIPS: {
     LIST: "/api/memberships",
