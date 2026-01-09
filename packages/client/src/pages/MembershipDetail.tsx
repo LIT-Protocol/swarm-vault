@@ -30,7 +30,6 @@ export default function MembershipDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchMembership = async () => {
@@ -54,16 +53,6 @@ export default function MembershipDetail() {
       fetchMembership();
     }
   }, [id]);
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
 
   const handleLeave = async () => {
     if (!membership) return;
@@ -167,99 +156,6 @@ export default function MembershipDetail() {
             </span>
           </div>
         )}
-      </div>
-
-      {/* Agent Wallet */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Your Agent Wallet
-        </h2>
-
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-          <div className="flex items-center justify-between">
-            <code className="text-sm font-mono text-gray-800 break-all">
-              {membership.agentWalletAddress}
-            </code>
-            <button
-              onClick={() => copyToClipboard(membership.agentWalletAddress)}
-              className={`ml-4 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                copied
-                  ? "bg-green-100 text-green-800"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </div>
-
-        <div className="text-sm text-gray-600">
-          <p className="mb-2">
-            Joined on {new Date(membership.joinedAt).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
-
-      {/* Deposit Instructions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-blue-900 mb-4">
-          How to Deposit
-        </h2>
-        <ol className="list-decimal list-inside space-y-2 text-blue-800">
-          <li>Copy your agent wallet address above</li>
-          <li>
-            Send ETH or ERC-20 tokens to this address on{" "}
-            <strong>Base network</strong>
-          </li>
-          <li>
-            Your funds will be available for the swarm manager to execute
-            transactions
-          </li>
-        </ol>
-        <p className="mt-4 text-sm text-blue-700">
-          <strong>Note:</strong> The agent wallet is a smart contract wallet
-          that will be deployed when the first transaction is executed. You can
-          deposit funds before deployment.
-        </p>
-      </div>
-
-      {/* Withdraw Instructions */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          How to Withdraw
-        </h2>
-        <p className="text-gray-700 mb-4">
-          You retain full ownership of your agent wallet. To withdraw funds:
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-gray-700">
-          <li>
-            Use your connected wallet (MetaMask) to interact with your agent
-            wallet
-          </li>
-          <li>
-            Connect to a dApp like{" "}
-            <a
-              href="https://app.zerion.io"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              Zerion
-            </a>{" "}
-            or{" "}
-            <a
-              href="https://app.safe.global"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              Safe
-            </a>
-          </li>
-          <li>
-            Sign transactions directly to transfer your funds to any address
-          </li>
-        </ol>
       </div>
 
       {/* Balance Display */}

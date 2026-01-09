@@ -8,7 +8,6 @@ import {
   type Transport,
   type Chain,
   type Account,
-  type Hex,
 } from "viem";
 import { baseSepolia, base } from "viem/chains";
 import {
@@ -273,34 +272,16 @@ export async function withdrawToken(
       args: [destinationAddress, amount],
     });
 
-    // Encode the call and send
-    const callData = await kernelClient.account.encodeCalls([
-      {
-        to: tokenAddress,
-        value: 0n,
-        data: transferData,
-      },
-    ]);
-
-    console.log("Submitting UserOperation...");
-    const userOpHash = await kernelClient.sendUserOperation({
-      callData,
+    console.log("Sending transaction...");
+    const txHash = await kernelClient.sendTransaction({
+      to: tokenAddress,
+      data: transferData,
     });
-    console.log("UserOperation submitted:", userOpHash);
-
-    // Wait for confirmation
-    console.log("Waiting for confirmation...");
-    const receipt = await kernelClient.waitForUserOperationReceipt({
-      hash: userOpHash,
-      timeout: 60000, // 60 second timeout
-    });
-
-    console.log("Transaction confirmed:", receipt.receipt.transactionHash);
+    console.log("Transaction confirmed:", txHash);
 
     return {
       success: true,
-      txHash: receipt.receipt.transactionHash,
-      userOpHash: userOpHash,
+      txHash: txHash,
     };
   } catch (error) {
     console.error("Withdrawal failed:", error);
@@ -394,34 +375,16 @@ export async function withdrawETH(
       },
     });
 
-    // Encode native ETH transfer
-    const callData = await kernelClient.account.encodeCalls([
-      {
-        to: destinationAddress,
-        value: amount,
-        data: "0x" as Hex,
-      },
-    ]);
-
-    console.log("Submitting UserOperation...");
-    const userOpHash = await kernelClient.sendUserOperation({
-      callData,
+    console.log("Sending transaction...");
+    const txHash = await kernelClient.sendTransaction({
+      to: destinationAddress,
+      value: amount,
     });
-    console.log("UserOperation submitted:", userOpHash);
-
-    // Wait for confirmation
-    console.log("Waiting for confirmation...");
-    const receipt = await kernelClient.waitForUserOperationReceipt({
-      hash: userOpHash,
-      timeout: 60000, // 60 second timeout
-    });
-
-    console.log("Transaction confirmed:", receipt.receipt.transactionHash);
+    console.log("Transaction confirmed:", txHash);
 
     return {
       success: true,
-      txHash: receipt.receipt.transactionHash,
-      userOpHash: userOpHash,
+      txHash: txHash,
     };
   } catch (error) {
     console.error("ETH Withdrawal failed:", error);

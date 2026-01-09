@@ -53,6 +53,17 @@ export default function BalanceDisplay({ membershipId, agentWalletAddress, swarm
   const [error, setError] = useState<string | null>(null);
   const [withdrawToken, setWithdrawToken] = useState<WithdrawToken | null>(null);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const fetchBalance = useCallback(async (refresh = false) => {
     try {
@@ -168,7 +179,7 @@ export default function BalanceDisplay({ membershipId, agentWalletAddress, swarm
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Balance</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Your Agent Wallet</h2>
         <div className="flex items-center gap-2">
           {balanceData.cached && (
             <span className="text-xs text-gray-400">cached</span>
@@ -194,6 +205,28 @@ export default function BalanceDisplay({ membershipId, agentWalletAddress, swarm
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
+      </div>
+
+      {/* Wallet Address */}
+      <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <code className="text-sm font-mono text-gray-700 break-all">
+            {agentWalletAddress}
+          </code>
+          <button
+            onClick={() => copyToClipboard(agentWalletAddress)}
+            className={`shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              copied
+                ? "bg-green-100 text-green-800"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Send ETH or tokens on Base to this address to deposit
+        </p>
       </div>
 
       {!hasAnyBalance ? (

@@ -112,10 +112,7 @@ export default function WithdrawModal({
       if (result.success) {
         setStatus("success");
         setTxHash(result.txHash || null);
-        // Call onSuccess after a short delay to show success state
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
+        // Don't auto-close - let user click the BaseScan link or close manually
       } else {
         setStatus("error");
         setError(result.error || "Withdrawal failed");
@@ -277,7 +274,7 @@ export default function WithdrawModal({
           {/* Action Buttons */}
           <div className="flex gap-3">
             <button
-              onClick={onClose}
+              onClick={status === "success" ? onSuccess : onClose}
               disabled={isProcessing}
               className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium disabled:opacity-50"
             >
