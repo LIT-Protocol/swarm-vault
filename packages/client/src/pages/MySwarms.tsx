@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
+import { SwarmCardSkeleton } from "../components/LoadingSkeleton";
+import { ErrorDisplay } from "../components/ErrorDisplay";
 
 interface MembershipListItem {
   id: string;
@@ -20,21 +22,6 @@ export default function MySwarms() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMemberships = async () => {
-      try {
-        setIsLoading(true);
-        const data = await api.get<MembershipListItem[]>("/api/memberships");
-        setMemberships(data);
-        setError(null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load memberships"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchMemberships();
   }, []);
 
@@ -46,10 +33,37 @@ export default function MySwarms() {
     }
   };
 
+  const fetchMemberships = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.get<MembershipListItem[]>("/api/memberships");
+      setMemberships(data);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load memberships"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Swarms</h1>
+            <p className="text-gray-600 mt-1">
+              View your swarm memberships and agent wallets
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SwarmCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -71,11 +85,11 @@ export default function MySwarms() {
         </Link>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      )}
+      <ErrorDisplay
+        error={error}
+        onDismiss={() => setError(null)}
+        onRetry={fetchMemberships}
+      />
 
       {memberships.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">

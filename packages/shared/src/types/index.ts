@@ -100,11 +100,69 @@ export interface ResolvedTransactionData {
   value: bigint;
 }
 
+// Error Codes
+export enum ErrorCode {
+  // Authentication errors (1xxx)
+  UNAUTHORIZED = "AUTH_001",
+  INVALID_TOKEN = "AUTH_002",
+  TOKEN_EXPIRED = "AUTH_003",
+  INVALID_SIGNATURE = "AUTH_004",
+  NONCE_EXPIRED = "AUTH_005",
+
+  // Validation errors (2xxx)
+  VALIDATION_ERROR = "VAL_001",
+  INVALID_ADDRESS = "VAL_002",
+  INVALID_TEMPLATE = "VAL_003",
+  INVALID_AMOUNT = "VAL_004",
+
+  // Resource errors (3xxx)
+  NOT_FOUND = "RES_001",
+  ALREADY_EXISTS = "RES_002",
+  SWARM_NOT_FOUND = "RES_003",
+  MEMBERSHIP_NOT_FOUND = "RES_004",
+  TRANSACTION_NOT_FOUND = "RES_005",
+  USER_NOT_FOUND = "RES_006",
+
+  // Permission errors (4xxx)
+  FORBIDDEN = "PERM_001",
+  NOT_MANAGER = "PERM_002",
+  NOT_MEMBER = "PERM_003",
+  ALREADY_MEMBER = "PERM_004",
+
+  // External service errors (5xxx)
+  LIT_ERROR = "EXT_001",
+  ZERODEV_ERROR = "EXT_002",
+  ALCHEMY_ERROR = "EXT_003",
+  ZEROX_ERROR = "EXT_004",
+  BUNDLER_ERROR = "EXT_005",
+
+  // Transaction errors (6xxx)
+  TX_FAILED = "TX_001",
+  TX_REJECTED = "TX_002",
+  INSUFFICIENT_BALANCE = "TX_003",
+  NO_ACTIVE_MEMBERS = "TX_004",
+  SIGNING_FAILED = "TX_005",
+
+  // Internal errors (9xxx)
+  INTERNAL_ERROR = "INT_001",
+  DATABASE_ERROR = "INT_002",
+  CONFIG_ERROR = "INT_003",
+}
+
 // API Response types
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  errorCode?: ErrorCode;
+  details?: unknown;
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  error: string;
+  errorCode: ErrorCode;
+  details?: unknown;
 }
 
 // Auth types

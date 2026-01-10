@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import CreateSwarmModal from "../components/CreateSwarmModal";
+import { SwarmCardSkeleton } from "../components/LoadingSkeleton";
+import { ErrorDisplay } from "../components/ErrorDisplay";
 
 interface SwarmListItem {
   id: string;
@@ -46,8 +48,20 @@ export default function ManagerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Manager Dashboard</h1>
+            <p className="text-gray-600 mt-1">
+              Manage your swarms and execute batch transactions
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SwarmCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -69,11 +83,11 @@ export default function ManagerDashboard() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      )}
+      <ErrorDisplay
+        error={error}
+        onDismiss={() => setError(null)}
+        onRetry={fetchSwarms}
+      />
 
       {swarms.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">

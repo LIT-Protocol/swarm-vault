@@ -951,9 +951,125 @@ const permissionAccount = await deserializePermissionAccount(
 - `packages/client/src/pages/SwarmDetail.tsx` - Added "New Swap" button and SwapForm modal
 - `.env.example` - Added ZEROX_API_KEY
 
-#### Next Steps for Phase 10
+### Phase 10 Learnings (Polish & Testing)
 
-1. Add comprehensive error handling and user-friendly messages
-2. Add loading skeletons and optimistic updates
-3. Write unit tests for template engine and critical utilities
-4. Create API documentation
+**Completed:** 2025-01-09
+
+#### Error Handling Architecture
+
+1. **Structured Error Codes**: Implemented `ErrorCode` enum in shared package with categorized error codes:
+   - `AUTH_*` - Authentication errors (001-005)
+   - `VAL_*` - Validation errors (001-004)
+   - `RES_*` - Resource errors (001-006)
+   - `PERM_*` - Permission errors (001-004)
+   - `EXT_*` - External service errors (001-005)
+   - `TX_*` - Transaction errors (001-005)
+   - `INT_*` - Internal errors (001-003)
+
+2. **User-Friendly Messages**: Created a mapping of error codes to user-friendly messages in `errorHandler.ts`. Messages are generic enough to not leak sensitive information but specific enough to be actionable.
+
+3. **Enhanced AppError Class**: Extended `AppError` to include `code` (ErrorCode) and `details` properties. Details are only exposed in development mode.
+
+4. **ApiResponse Enhancement**: Added `errorCode` and `details` fields to the shared `ApiResponse` interface for programmatic error handling on the client.
+
+#### React Error Handling
+
+1. **ErrorBoundary Component**: Created class-based ErrorBoundary component that catches React render errors. Features:
+   - Displays user-friendly error message
+   - Shows error details in expandable section
+   - "Try Again" and "Refresh Page" buttons for recovery
+   - Accepts custom fallback prop for specialized error UIs
+
+2. **ErrorDisplay Component**: Reusable component for displaying API errors with:
+   - Multiple variants: `inline`, `banner`, `toast`
+   - Optional dismiss and retry callbacks
+   - Error code display for debugging
+
+3. **Provider Hierarchy**: Wrapped entire app with ErrorBoundary at the top level in `main.tsx`, outside all other providers to catch any errors in the component tree.
+
+#### Loading States
+
+1. **LoadingSpinner Component**: Configurable spinner with:
+   - Size variants: `sm`, `md`, `lg`
+   - Optional text label
+   - `fullScreen` mode for page-level loading
+
+2. **LoadingSkeleton Components**: Created multiple skeleton variants:
+   - `Skeleton` - Base component with pulse animation
+   - `CardSkeleton` - Generic card placeholder
+   - `SwarmCardSkeleton` - Specific to swarm cards
+   - `TableSkeleton` - Table with configurable rows/columns
+   - `BalanceSkeleton` - Balance display placeholder
+   - `FormSkeleton` - Form inputs placeholder
+
+3. **Page-Level Skeletons**: Updated `ManagerDashboard` and `MySwarms` pages to show skeleton grids while loading instead of basic spinners, providing better perceived performance.
+
+#### Testing Infrastructure
+
+1. **Vitest Setup**: Added Vitest as the test framework (preferred for Vite projects):
+   - Added to root and shared package.json
+   - Created `vitest.config.ts` with Node environment
+   - Added test scripts: `test`, `test:watch`, `test:coverage`
+
+2. **Template Engine Tests**: Created comprehensive test suite with 51 tests covering:
+   - `parsePlaceholder` - All placeholder types and edge cases
+   - `extractPlaceholders` - Nested objects and arrays
+   - `getRequiredTokenAddresses` - Token address extraction
+   - `resolvePlaceholder` - All resolution types
+   - `resolveString` - String interpolation
+   - `resolveValue` - Recursive resolution
+   - `validateTemplate` - Schema validation
+   - `resolveTemplate` - Full template resolution
+   - Edge cases: zero balances, large numbers, decimal percentages
+
+#### Documentation
+
+1. **Comprehensive README**: Created README.md with:
+   - Project overview and features
+   - Tech stack description
+   - Prerequisites and quick start guide
+   - Project structure
+   - Environment variables table
+   - Complete API reference with request/response examples
+   - Template placeholders reference
+   - Error codes reference
+   - Scripts reference
+   - Testing instructions
+
+#### Key Files Created
+
+- `packages/shared/src/types/index.ts` - Added ErrorCode enum and enhanced ApiResponse
+- `packages/server/src/middleware/errorHandler.ts` - Enhanced with error codes and user-friendly messages
+- `packages/client/src/components/ErrorBoundary.tsx` - React error boundary
+- `packages/client/src/components/ErrorDisplay.tsx` - Reusable error display
+- `packages/client/src/components/LoadingSpinner.tsx` - Configurable spinner
+- `packages/client/src/components/LoadingSkeleton.tsx` - Multiple skeleton variants
+- `packages/shared/vitest.config.ts` - Vitest configuration
+- `packages/shared/src/template/template.test.ts` - Template engine test suite
+- `README.md` - Comprehensive project documentation
+
+#### Key Files Modified
+
+- `packages/client/src/main.tsx` - Added ErrorBoundary wrapper
+- `packages/client/src/pages/ManagerDashboard.tsx` - Added skeleton loading and ErrorDisplay
+- `packages/client/src/pages/MySwarms.tsx` - Added skeleton loading and ErrorDisplay
+- `package.json` - Added test scripts and vitest dependency
+- `packages/shared/package.json` - Added test scripts and vitest dependency
+
+---
+
+## Project Complete
+
+All 10 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+- Full authentication flow (SIWE)
+- Swarm creation and management
+- User membership system
+- Smart wallet creation (ZeroDev + Lit PKP)
+- Transaction templating and execution
+- Balance display (Alchemy)
+- Token swaps (0x API)
+- User withdrawals
+- Comprehensive error handling
+- Loading states and skeletons
+- Unit tests for critical utilities
+- Full API documentation
