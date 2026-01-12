@@ -1,8 +1,7 @@
 import { type Address } from "viem";
 import { env } from "./env.js";
-import { bpsToPercentage } from "@swarm-vault/shared";
 
-// 0x API base URL for Base chain
+// 0x API base URL (unified for all chains in v2)
 const ZEROX_API_BASE = "https://api.0x.org";
 
 // Fee configuration
@@ -34,30 +33,80 @@ export const ZEROX_EXCHANGE_PROXY: Record<number, Address> = {
   84532: "0xDef1C0ded9bec7F1a1670819833240f027b25EfF", // Base Sepolia (if supported)
 };
 
-// Types for 0x API responses
+// Types for 0x API v2 responses
+export interface ZeroExFees {
+  integratorFee: {
+    amount: string;
+    token: string;
+    type: string;
+  } | null;
+  integratorFees: Array<{
+    amount: string;
+    token: string;
+    type: string;
+  }> | null;
+  zeroExFee: {
+    amount: string;
+    token: string;
+    type: string;
+  } | null;
+  gasFee: {
+    amount: string;
+    token: string;
+    type: string;
+  } | null;
+}
+
+export interface ZeroExRoute {
+  fills: Array<{
+    from: string;
+    to: string;
+    source: string;
+    proportionBps: string;
+  }>;
+  tokens: Array<{
+    address: string;
+    symbol: string;
+  }>;
+}
+
+export interface ZeroExIssues {
+  allowance: {
+    actual: string;
+    spender: string;
+  } | null;
+  balance: {
+    token: string;
+    actual: string;
+    expected: string;
+  } | null;
+  simulationIncomplete: boolean;
+  invalidSourcesPassed: string[];
+}
+
+// v2 Quote response (for execution, includes transaction)
 export interface ZeroExQuote {
-  chainId: number;
-  price: string;
-  grossPrice: string;
-  estimatedPriceImpact: string;
-  value: string;
-  gasPrice: string;
-  gas: string;
-  estimatedGas: string;
-  protocolFee: string;
-  minimumProtocolFee: string;
-  buyTokenAddress: string;
-  buyAmount: string;
-  grossBuyAmount: string;
-  sellTokenAddress: string;
-  sellAmount: string;
-  grossSellAmount: string;
-  sources: Array<{ name: string; proportion: string }>;
   allowanceTarget: string;
-  sellTokenToEthRate: string;
-  buyTokenToEthRate: string;
-  expectedSlippage: string | null;
-  transaction: {
+  blockNumber: string;
+  buyAmount: string;
+  minBuyAmount: string;
+  buyToken: string;
+  fees: ZeroExFees;
+  gas: string;
+  gasPrice: string;
+  issues: ZeroExIssues;
+  liquidityAvailable: boolean;
+  route: ZeroExRoute;
+  sellAmount: string;
+  sellToken: string;
+  tokenMetadata: {
+    buyToken: { buyTaxBps: string; sellTaxBps: string; transferTaxBps: string };
+    sellToken: { buyTaxBps: string; sellTaxBps: string; transferTaxBps: string };
+  };
+  totalNetworkFee: string;
+  zid: string;
+  // Transaction fields (present in quote, not price)
+  transaction?: {
     to: string;
     data: string;
     gas: string;
@@ -76,25 +125,27 @@ export interface ZeroExQuote {
   };
 }
 
+// v2 Price response (for preview, no transaction)
 export interface ZeroExPriceResponse {
-  chainId: number;
-  price: string;
-  grossPrice: string;
-  estimatedPriceImpact: string;
-  value: string;
-  gasPrice: string;
-  estimatedGas: string;
-  buyTokenAddress: string;
-  buyAmount: string;
-  grossBuyAmount: string;
-  sellTokenAddress: string;
-  sellAmount: string;
-  grossSellAmount: string;
-  sources: Array<{ name: string; proportion: string }>;
   allowanceTarget: string;
-  sellTokenToEthRate: string;
-  buyTokenToEthRate: string;
-  expectedSlippage: string | null;
+  blockNumber: string;
+  buyAmount: string;
+  minBuyAmount: string;
+  buyToken: string;
+  fees: ZeroExFees;
+  gas: string;
+  gasPrice: string;
+  issues: ZeroExIssues;
+  liquidityAvailable: boolean;
+  route: ZeroExRoute;
+  sellAmount: string;
+  sellToken: string;
+  tokenMetadata: {
+    buyToken: { buyTaxBps: string; sellTaxBps: string; transferTaxBps: string };
+    sellToken: { buyTaxBps: string; sellTaxBps: string; transferTaxBps: string };
+  };
+  totalNetworkFee: string;
+  zid: string;
 }
 
 export interface SwapQuoteParams {
@@ -136,11 +187,12 @@ export interface SwapExecuteData {
 }
 
 /**
- * Get the 0x API headers with API key
+ * Get the 0x API headers with API key (v2 API)
  */
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "0x-version": "v2", // Required for v2 API
   };
 
   if (env.ZEROX_API_KEY) {
@@ -152,32 +204,40 @@ function getHeaders(): Record<string, string> {
 
 /**
  * Get a price quote (for preview, doesn't include transaction data)
+ * Uses v2 API with permit2 endpoint
  */
 export async function getPrice(params: SwapQuoteParams): Promise<ZeroExPriceResponse> {
   if (!env.ZEROX_API_KEY) {
     throw new Error("ZEROX_API_KEY is required for swap quotes");
   }
 
+  // v2 API uses 'taker' instead of 'takerAddress'
   const queryParams = new URLSearchParams({
     chainId: env.CHAIN_ID.toString(),
     sellToken: params.sellToken,
     buyToken: params.buyToken,
     sellAmount: params.sellAmount,
-    takerAddress: params.takerAddress,
+    taker: params.takerAddress,
   });
 
+  // v2 uses slippageBps instead of slippagePercentage (basis points, 100 = 1%)
   if (params.slippagePercentage !== undefined) {
-    queryParams.set("slippagePercentage", params.slippagePercentage.toString());
+    const slippageBps = Math.round(params.slippagePercentage * 10000);
+    queryParams.set("slippageBps", slippageBps.toString());
   }
 
   // Add fee parameters if configured
+  // v2 uses swapFeeBps and swapFeeRecipient
   const feeConfig = getFeeConfig();
   if (feeConfig) {
-    queryParams.set("buyTokenPercentageFee", bpsToPercentage(feeConfig.bps).toString());
-    queryParams.set("feeRecipient", feeConfig.recipientAddress);
+    queryParams.set("swapFeeBps", feeConfig.bps.toString());
+    queryParams.set("swapFeeRecipient", feeConfig.recipientAddress);
   }
 
-  const url = `${ZEROX_API_BASE}/swap/v1/price?${queryParams.toString()}`;
+  // v2 API endpoint (using allowance-holder for simpler approve+swap flow)
+  const url = `${ZEROX_API_BASE}/swap/allowance-holder/price?${queryParams.toString()}`;
+
+  console.log("[0x] Price API request:", url);
 
   const response = await fetch(url, {
     method: "GET",
@@ -195,32 +255,40 @@ export async function getPrice(params: SwapQuoteParams): Promise<ZeroExPriceResp
 
 /**
  * Get a full swap quote (includes transaction data for execution)
+ * Uses v2 API with permit2 endpoint
  */
 export async function getQuote(params: SwapQuoteParams): Promise<ZeroExQuote> {
   if (!env.ZEROX_API_KEY) {
     throw new Error("ZEROX_API_KEY is required for swap quotes");
   }
 
+  // v2 API uses 'taker' instead of 'takerAddress'
   const queryParams = new URLSearchParams({
     chainId: env.CHAIN_ID.toString(),
     sellToken: params.sellToken,
     buyToken: params.buyToken,
     sellAmount: params.sellAmount,
-    takerAddress: params.takerAddress,
+    taker: params.takerAddress,
   });
 
+  // v2 uses slippageBps instead of slippagePercentage (basis points, 100 = 1%)
   if (params.slippagePercentage !== undefined) {
-    queryParams.set("slippagePercentage", params.slippagePercentage.toString());
+    const slippageBps = Math.round(params.slippagePercentage * 10000);
+    queryParams.set("slippageBps", slippageBps.toString());
   }
 
   // Add fee parameters if configured
+  // v2 uses swapFeeBps and swapFeeRecipient
   const feeConfig = getFeeConfig();
   if (feeConfig) {
-    queryParams.set("buyTokenPercentageFee", bpsToPercentage(feeConfig.bps).toString());
-    queryParams.set("feeRecipient", feeConfig.recipientAddress);
+    queryParams.set("swapFeeBps", feeConfig.bps.toString());
+    queryParams.set("swapFeeRecipient", feeConfig.recipientAddress);
   }
 
-  const url = `${ZEROX_API_BASE}/swap/v1/quote?${queryParams.toString()}`;
+  // v2 API endpoint (using allowance-holder for simpler approve+swap flow)
+  const url = `${ZEROX_API_BASE}/swap/allowance-holder/quote?${queryParams.toString()}`;
+
+  console.log("[0x] Quote API request:", url);
 
   const response = await fetch(url, {
     method: "GET",
@@ -233,7 +301,17 @@ export async function getQuote(params: SwapQuoteParams): Promise<ZeroExQuote> {
     throw new Error(`0x API error: ${response.status} - ${errorBody}`);
   }
 
-  return response.json() as Promise<ZeroExQuote>;
+  const quote = await response.json() as ZeroExQuote;
+  console.log("[0x] Quote response:", {
+    liquidityAvailable: quote.liquidityAvailable,
+    allowanceTarget: quote.allowanceTarget,
+    sellAmount: quote.sellAmount,
+    buyAmount: quote.buyAmount,
+    hasTransaction: !!quote.transaction,
+    transactionTo: quote.transaction?.to,
+  });
+
+  return quote;
 }
 
 /**
@@ -275,15 +353,33 @@ export async function getSwapPreviewForWallets(
         slippagePercentage,
       });
 
-      // Calculate fee amount (grossBuyAmount - buyAmount)
-      let feeAmount: string | undefined;
-      if (price.grossBuyAmount && price.buyAmount) {
-        const gross = BigInt(price.grossBuyAmount);
-        const net = BigInt(price.buyAmount);
-        if (gross > net) {
-          feeAmount = (gross - net).toString();
-        }
+      // Check liquidity availability (v2 API)
+      if (!price.liquidityAvailable) {
+        results.push({
+          walletAddress,
+          sellToken,
+          buyToken,
+          sellAmount,
+          buyAmount: "0",
+          estimatedPriceImpact: "0",
+          sources: [],
+          gasEstimate: "0",
+          error: "No liquidity available for this swap",
+        });
+        continue;
       }
+
+      // Calculate fee amount from integrator fee (v2 API)
+      let feeAmount: string | undefined;
+      if (price.fees?.integratorFee?.amount) {
+        feeAmount = price.fees.integratorFee.amount;
+      }
+
+      // Convert route.fills to sources format for UI compatibility
+      const sources = price.route.fills.map(fill => ({
+        name: fill.source,
+        proportion: (Number(fill.proportionBps) / 100).toString() + "%",
+      }));
 
       results.push({
         walletAddress,
@@ -291,9 +387,9 @@ export async function getSwapPreviewForWallets(
         buyToken,
         sellAmount: price.sellAmount,
         buyAmount: price.buyAmount,
-        estimatedPriceImpact: price.estimatedPriceImpact || "0",
-        sources: price.sources,
-        gasEstimate: price.estimatedGas,
+        estimatedPriceImpact: "0", // v2 doesn't provide this directly
+        sources,
+        gasEstimate: price.gas,
         feeAmount,
       });
     } catch (error) {
@@ -353,14 +449,40 @@ export async function getSwapExecuteDataForWallets(
         slippagePercentage,
       });
 
-      // Calculate fee amount (grossBuyAmount - buyAmount)
+      // Check liquidity availability (v2 API)
+      if (!quote.liquidityAvailable) {
+        results.push({
+          walletAddress,
+          sellToken,
+          buyToken,
+          sellAmount,
+          buyAmount: "0",
+          transaction: { to: "0x" as Address, data: "0x", value: "0" },
+          allowanceTarget: "0x" as Address,
+          error: "No liquidity available for this swap",
+        });
+        continue;
+      }
+
+      // Check if transaction data is available
+      if (!quote.transaction) {
+        results.push({
+          walletAddress,
+          sellToken,
+          buyToken,
+          sellAmount,
+          buyAmount: "0",
+          transaction: { to: "0x" as Address, data: "0x", value: "0" },
+          allowanceTarget: "0x" as Address,
+          error: "No transaction data returned from 0x API",
+        });
+        continue;
+      }
+
+      // Calculate fee amount from integrator fee (v2 API)
       let feeAmount: string | undefined;
-      if (quote.grossBuyAmount && quote.buyAmount) {
-        const gross = BigInt(quote.grossBuyAmount);
-        const net = BigInt(quote.buyAmount);
-        if (gross > net) {
-          feeAmount = (gross - net).toString();
-        }
+      if (quote.fees?.integratorFee?.amount) {
+        feeAmount = quote.fees.integratorFee.amount;
       }
 
       results.push({

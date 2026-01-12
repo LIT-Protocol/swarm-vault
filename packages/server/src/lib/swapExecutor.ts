@@ -183,11 +183,16 @@ export async function executeSwapTransaction(
         }
 
         // Add the swap transaction
+        console.log(`[SwapExecutor] Swap transaction to: ${data.transaction.to}`);
+        console.log(`[SwapExecutor] Swap transaction value: ${data.transaction.value || "0"}`);
+
         calls.push({
           to: data.transaction.to,
           value: BigInt(data.transaction.value || "0"),
           data: data.transaction.data as Hex,
         });
+
+        console.log(`[SwapExecutor] Total calls to execute: ${calls.length}`);
 
         // Encode all calls
         const callData = await kernelClient.account.encodeCalls(calls);
