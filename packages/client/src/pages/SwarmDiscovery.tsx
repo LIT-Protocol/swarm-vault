@@ -14,7 +14,7 @@ interface SwarmListItem {
   description: string;
   socialUrl: string | null;
   createdAt: string;
-  managers: { id: string; walletAddress: string }[];
+  managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
   isManager: boolean;
 }
@@ -268,8 +268,20 @@ export default function SwarmDiscovery() {
                 </span>
               </div>
               {swarm.managers.length > 0 && (
-                <div className="text-xs text-gray-400 mb-4">
-                  Manager: {truncateAddress(swarm.managers[0].walletAddress)}
+                <div className="text-xs text-gray-400 mb-4 flex items-center gap-1">
+                  <span>Manager:</span>
+                  {swarm.managers[0].twitterUsername ? (
+                    <a
+                      href={`https://twitter.com/${swarm.managers[0].twitterUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-600 font-medium"
+                    >
+                      @{swarm.managers[0].twitterUsername}
+                    </a>
+                  ) : (
+                    <span>{truncateAddress(swarm.managers[0].walletAddress)}</span>
+                  )}
                 </div>
               )}
               <div className="flex gap-2">

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { SiweMessage, generateNonce } from "siwe";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../lib/env.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -10,7 +11,13 @@ const router = Router();
 // In-memory nonce store (in production, use Redis or database)
 const nonceStore = new Map<string, { nonce: string; expiresAt: number }>();
 
-// Clean up expired nonces periodically
+// In-memory store for Twitter OAuth state and PKCE verifiers
+const twitterOAuthStore = new Map<
+  string,
+  { state: string; codeVerifier: string; userId: string; expiresAt: number }
+>();
+
+// Clean up expired entries periodically
 setInterval(() => {
   const now = Date.now();
   for (const [address, data] of nonceStore.entries()) {
@@ -18,7 +25,22 @@ setInterval(() => {
       nonceStore.delete(address);
     }
   }
+  for (const [state, data] of twitterOAuthStore.entries()) {
+    if (data.expiresAt < now) {
+      twitterOAuthStore.delete(state);
+    }
+  }
 }, 60000); // Clean every minute
+
+// Helper function to generate PKCE code verifier and challenge
+function generatePKCE() {
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+  const codeChallenge = crypto
+    .createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64url");
+  return { codeVerifier, codeChallenge };
+}
 
 // POST /api/auth/nonce - Generate nonce for SIWE
 router.post("/nonce", (req: Request, res: Response) => {
@@ -120,6 +142,8 @@ router.post("/login", async (req: Request, res: Response) => {
         user: {
           id: user.id,
           walletAddress: user.walletAddress,
+          twitterId: user.twitterId,
+          twitterUsername: user.twitterUsername,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
@@ -154,6 +178,8 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
       data: {
         id: user.id,
         walletAddress: user.walletAddress,
+        twitterId: user.twitterId,
+        twitterUsername: user.twitterUsername,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -163,6 +189,168 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: "Failed to get user",
+    });
+  }
+});
+
+// GET /api/auth/twitter - Initiate Twitter OAuth flow
+router.get("/twitter", authMiddleware, (req: Request, res: Response) => {
+  if (!env.TWITTER_CLIENT_ID || !env.TWITTER_CLIENT_SECRET || !env.TWITTER_CALLBACK_URL) {
+    res.status(500).json({
+      success: false,
+      error: "Twitter OAuth is not configured",
+    });
+    return;
+  }
+
+  const userId = req.user!.userId;
+  const state = crypto.randomBytes(16).toString("hex");
+  const { codeVerifier, codeChallenge } = generatePKCE();
+
+  // Store state and verifier for callback validation
+  twitterOAuthStore.set(state, {
+    state,
+    codeVerifier,
+    userId,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Build Twitter OAuth 2.0 authorization URL
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: env.TWITTER_CLIENT_ID,
+    redirect_uri: env.TWITTER_CALLBACK_URL,
+    scope: "tweet.read users.read",
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+  });
+
+  const authUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+  res.json({
+    success: true,
+    data: { authUrl },
+  });
+});
+
+// GET /api/auth/twitter/callback - Handle Twitter OAuth callback
+router.get("/twitter/callback", async (req: Request, res: Response) => {
+  const { code, state, error } = req.query;
+
+  // Get frontend URL from environment or default
+  const frontendUrl = process.env.VITE_API_URL?.replace(":3001", ":5173") || "http://localhost:5173";
+
+  if (error) {
+    res.redirect(`${frontendUrl}/settings?twitter_error=${encodeURIComponent(error as string)}`);
+    return;
+  }
+
+  if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+    res.redirect(`${frontendUrl}/settings?twitter_error=missing_params`);
+    return;
+  }
+
+  // Validate state and get stored data
+  const storedData = twitterOAuthStore.get(state);
+  if (!storedData) {
+    res.redirect(`${frontendUrl}/settings?twitter_error=invalid_state`);
+    return;
+  }
+
+  if (storedData.expiresAt < Date.now()) {
+    twitterOAuthStore.delete(state);
+    res.redirect(`${frontendUrl}/settings?twitter_error=expired`);
+    return;
+  }
+
+  // Clear used state
+  twitterOAuthStore.delete(state);
+
+  try {
+    // Exchange code for access token
+    const tokenResponse = await fetch("https://api.twitter.com/2/oauth2/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${Buffer.from(
+          `${env.TWITTER_CLIENT_ID}:${env.TWITTER_CLIENT_SECRET}`
+        ).toString("base64")}`,
+      },
+      body: new URLSearchParams({
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: env.TWITTER_CALLBACK_URL!,
+        code_verifier: storedData.codeVerifier,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error("Twitter token exchange failed:", errorData);
+      res.redirect(`${frontendUrl}/settings?twitter_error=token_exchange_failed`);
+      return;
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Get user info from Twitter
+    const userResponse = await fetch("https://api.twitter.com/2/users/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!userResponse.ok) {
+      console.error("Twitter user fetch failed:", await userResponse.text());
+      res.redirect(`${frontendUrl}/settings?twitter_error=user_fetch_failed`);
+      return;
+    }
+
+    const userData = await userResponse.json();
+    const twitterId = userData.data.id;
+    const twitterUsername = userData.data.username;
+
+    // Check if this Twitter account is already linked to another user
+    const existingUser = await prisma.user.findUnique({
+      where: { twitterId },
+    });
+
+    if (existingUser && existingUser.id !== storedData.userId) {
+      res.redirect(`${frontendUrl}/settings?twitter_error=already_linked`);
+      return;
+    }
+
+    // Update user with Twitter info
+    await prisma.user.update({
+      where: { id: storedData.userId },
+      data: { twitterId, twitterUsername },
+    });
+
+    res.redirect(`${frontendUrl}/settings?twitter_success=true`);
+  } catch (err) {
+    console.error("Twitter OAuth error:", err);
+    res.redirect(`${frontendUrl}/settings?twitter_error=unknown`);
+  }
+});
+
+// POST /api/auth/twitter/disconnect - Disconnect Twitter account
+router.post("/twitter/disconnect", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { twitterId: null, twitterUsername: null },
+    });
+
+    res.json({
+      success: true,
+      data: { message: "Twitter account disconnected" },
+    });
+  } catch (error) {
+    console.error("Failed to disconnect Twitter:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to disconnect Twitter account",
     });
   }
 });

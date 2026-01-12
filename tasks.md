@@ -347,23 +347,136 @@
 
 ---
 
-## Future Phases (Not for MVP)
+## Phase 11: Twitter OAuth for Managers [COMPLETED]
 
-### Phase 11: WalletConnect Integration
+### 11.1 Backend Twitter OAuth
+- [x] Add Twitter/X OAuth 2.0 credentials to environment variables
+  - `TWITTER_CLIENT_ID`
+  - `TWITTER_CLIENT_SECRET`
+  - `TWITTER_CALLBACK_URL`
+- [x] Create Twitter OAuth endpoints
+  - `GET /api/auth/twitter` - Initiate OAuth flow, return auth URL
+  - `GET /api/auth/twitter/callback` - Handle OAuth callback
+  - `POST /api/auth/twitter/disconnect` - Disconnect Twitter account
+- [x] Store Twitter user info in database
+  - Add `twitterId`, `twitterUsername` fields to User model
+- [x] Add middleware to require linked Twitter account for swarm creation
+
+### 11.2 Frontend Twitter Integration
+- [x] Add "Connect Twitter" button to manager profile/settings
+- [x] Show Twitter connection status (connected vs not connected)
+- [x] Update CreateSwarmModal to check for linked Twitter
+  - Show error/prompt if not connected
+- [x] Display manager's Twitter handle on swarm cards/detail pages
+
+---
+
+## Phase 12: 0x Swap Fee Collection
+
+### 12.1 Fee Configuration
+- [ ] Add fee recipient environment variable
+  - `SWAP_FEE_RECIPIENT` - Wallet address to receive fees
+  - `SWAP_FEE_BPS` - Fee in basis points (default 50 = 0.5%)
+- [ ] Update shared constants with fee configuration
+
+### 12.2 0x Fee Integration
+- [ ] Update `zeroEx.ts` to include fee parameters in quotes
+  - 0x API supports `buyTokenPercentageFee` parameter
+  - Fee is taken from buy token and sent to recipient
+- [ ] Update swap preview to show fee amount
+  - Display fee in absolute terms and percentage
+  - Show fee recipient (truncated address)
+- [ ] Ensure fee is included in swap execution calls
+
+### 12.3 Fee Transparency UI
+- [ ] Update SwapForm preview to display fee breakdown
+  - "Platform fee: X tokens (0.5%)"
+  - "You receive: Y tokens"
+- [ ] Add fee disclosure to swarm documentation/FAQ
+
+---
+
+## Phase 13: Gnosis SAFE Sign-Off for Manager Actions
+
+### 13.1 SAFE Configuration
+- [ ] Add SAFE integration fields to Swarm model
+  - `safeAddress` - Gnosis SAFE address (optional)
+  - `requireSafeSignoff` - Boolean to enable/disable requirement
+- [ ] Add SAFE SDK packages
+  - `@safe-global/safe-core-sdk`
+  - `@safe-global/safe-service-client`
+- [ ] Create SAFE service for interacting with SAFE API
+
+### 13.2 Action Proposal Flow
+- [ ] Create `ProposedAction` model in database
+  - `id`, `swarmId`, `managerId`
+  - `actionType` (SWAP, TRANSACTION, etc.)
+  - `actionData` (JSON with transaction details)
+  - `safeMessageHash` - Hash for SAFE to sign
+  - `status` (PROPOSED, APPROVED, REJECTED, EXECUTED, EXPIRED)
+  - `proposedAt`, `approvedAt`, `expiresAt`
+- [ ] Create manager endpoints for proposals
+  - `POST /api/swarms/:id/proposals` - Create new proposal
+  - `GET /api/swarms/:id/proposals` - List proposals
+  - `GET /api/proposals/:id` - Get proposal details
+  - `POST /api/proposals/:id/execute` - Execute approved proposal
+
+### 13.3 SAFE Signature Verification (Backend)
+- [ ] Create function to generate SAFE message hash from action data
+- [ ] Create function to check SAFE signature status via SAFE API
+- [ ] Create function to verify on-chain SAFE signature (fallback)
+- [ ] Expose endpoint for checking proposal approval status
+  - `GET /api/proposals/:id/status`
+
+### 13.4 Lit Action Enforcement
+- [ ] Update Lit Action to enforce SAFE sign-off
+  - Accept proposal ID and SAFE address as parameters
+  - Fetch proposal data from swarm-vault API (via `Lit.Actions.fetch`)
+  - Verify SAFE signature on-chain via RPC
+  - Only sign if SAFE has approved the exact action hash
+  - Reject with clear error if signature missing/invalid
+- [ ] Add SAFE verification parameters to transaction execution flow
+- [ ] Handle timeout/expiry of proposals
+
+### 13.5 Manager Proposal UI
+- [ ] Create ProposalForm component
+  - Similar to TransactionForm but creates proposal instead of executing
+  - Shows message hash for SAFE to sign
+  - Link to SAFE app for signing
+- [ ] Create ProposalList component
+  - Show pending, approved, executed proposals
+  - Status indicators (waiting for SAFE, ready to execute, expired)
+- [ ] Create ProposalDetail component
+  - Show full action details
+  - Show SAFE signature status (polling)
+  - "Execute" button when approved
+- [ ] Update SwapForm to support proposal mode when SAFE is configured
+
+### 13.6 SAFE Configuration UI
+- [ ] Add SAFE configuration section to swarm settings
+  - Enable/disable SAFE requirement toggle
+  - SAFE address input with validation
+  - Test connection to verify SAFE exists and is accessible
+- [ ] Show SAFE status on swarm detail page
+
+---
+
+## Future Phases (Post-MVP)
+
+### Phase 14: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 12: Transaction Simulation
+### Phase 15: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 13: Advanced Features
+### Phase 16: Advanced Features
 - [ ] Spending limits per user
-- [ ] Manager multi-sig
-- [ ] Fee collection
 - [ ] Analytics dashboard
+- [ ] Swarm performance metrics
 
 ---
 

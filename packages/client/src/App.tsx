@@ -6,6 +6,7 @@ import SwarmDetail from "./pages/SwarmDetail";
 import SwarmDiscovery from "./pages/SwarmDiscovery";
 import MySwarms from "./pages/MySwarms";
 import MembershipDetail from "./pages/MembershipDetail";
+import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -43,6 +44,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MembershipDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

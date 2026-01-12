@@ -17,6 +17,7 @@ router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
               select: {
                 id: true,
                 walletAddress: true,
+                twitterUsername: true,
               },
             },
           },
@@ -44,6 +45,7 @@ router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
       managers: swarm.managers.map((m) => ({
         id: m.user.id,
         walletAddress: m.user.walletAddress,
+        twitterUsername: m.user.twitterUsername,
       })),
       memberCount: swarm._count.memberships,
       isManager: req.user
@@ -64,9 +66,24 @@ router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/swarms - Create a new swarm (requires auth)
+// POST /api/swarms - Create a new swarm (requires auth + Twitter)
 router.post("/", authMiddleware, async (req: Request, res: Response) => {
   try {
+    // Check if user has linked Twitter account
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { twitterId: true, twitterUsername: true },
+    });
+
+    if (!user?.twitterId) {
+      res.status(403).json({
+        success: false,
+        error: "You must connect your Twitter account before creating a swarm",
+        errorCode: "PERM_005",
+      });
+      return;
+    }
+
     // Validate input
     const parseResult = CreateSwarmSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -153,6 +170,7 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
               select: {
                 id: true,
                 walletAddress: true,
+                twitterUsername: true,
               },
             },
           },
@@ -194,6 +212,7 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
         managers: swarm.managers.map((m) => ({
           id: m.user.id,
           walletAddress: m.user.walletAddress,
+          twitterUsername: m.user.twitterUsername,
         })),
         memberCount: swarm._count.memberships,
         isManager,

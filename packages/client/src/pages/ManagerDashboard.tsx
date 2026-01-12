@@ -12,7 +12,7 @@ interface SwarmListItem {
   description: string;
   socialUrl: string | null;
   createdAt: string;
-  managers: { id: string; walletAddress: string }[];
+  managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
   isManager: boolean;
 }
@@ -129,9 +129,15 @@ export default function ManagerDashboard() {
               {swarm.managers.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <span className="text-xs text-gray-400">Manager: </span>
-                  <span className="text-xs text-gray-600">
-                    {truncateAddress(swarm.managers[0].walletAddress)}
-                  </span>
+                  {swarm.managers[0].twitterUsername ? (
+                    <span className="text-xs text-blue-500 font-medium">
+                      @{swarm.managers[0].twitterUsername}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-600">
+                      {truncateAddress(swarm.managers[0].walletAddress)}
+                    </span>
+                  )}
                 </div>
               )}
             </Link>

@@ -14,7 +14,7 @@ interface SwarmData {
   litPkpPublicKey?: string;
   createdAt: string;
   updatedAt: string;
-  managers: { id: string; walletAddress: string }[];
+  managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
   isManager: boolean;
 }
@@ -180,12 +180,32 @@ export default function SwarmDetail() {
             <h3 className="text-sm font-medium text-gray-500 mb-2">Managers</h3>
             <div className="flex flex-wrap gap-2">
               {swarm.managers.map((manager) => (
-                <span
-                  key={manager.id}
-                  className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700"
-                >
-                  {truncateAddress(manager.walletAddress)}
-                </span>
+                manager.twitterUsername ? (
+                  <a
+                    key={manager.id}
+                    href={`https://twitter.com/${manager.twitterUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 bg-blue-50 rounded-full text-sm text-blue-600 hover:bg-blue-100 flex items-center gap-1"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    @{manager.twitterUsername}
+                  </a>
+                ) : (
+                  <span
+                    key={manager.id}
+                    className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700"
+                  >
+                    {truncateAddress(manager.walletAddress)}
+                  </span>
+                )
               ))}
             </div>
           </div>

@@ -329,13 +329,72 @@ JWT_SECRET=...
 4. **API Auth**: All mutating endpoints require valid JWT
 5. **Input Validation**: Validate all transaction data before signing
 
+## Upcoming Features
+
+### Twitter OAuth for Managers (Phase 11)
+
+Managers must link a Twitter/X account before creating swarms. This proves the manager controls the associated Twitter account, adding accountability and trust.
+
+**Flow:**
+1. Manager navigates to profile/settings
+2. Clicks "Connect Twitter" → redirected to Twitter OAuth
+3. After authorization, Twitter ID and username stored
+4. Swarm creation requires a linked Twitter account
+5. Manager's Twitter handle displayed on swarm pages
+
+**Database Changes:**
+- `User.twitterId` - Twitter user ID
+- `User.twitterUsername` - Twitter handle (@username)
+
+### 0x Swap Fee Collection (Phase 12)
+
+Add a platform fee (50 basis points = 0.5%) to all swaps that goes to a protocol-controlled wallet.
+
+**Implementation:**
+- 0x API supports `buyTokenPercentageFee` and `feeRecipient` parameters
+- Fee is taken from the buy token (output) automatically
+- Fee recipient wallet address stored in `SWAP_FEE_RECIPIENT` env var
+- Fee amount shown in swap preview UI for transparency
+
+**Environment Variables:**
+- `SWAP_FEE_RECIPIENT` - Wallet address receiving fees
+- `SWAP_FEE_BPS` - Fee in basis points (default: 50)
+
+### Gnosis SAFE Sign-Off (Phase 13)
+
+Allow swarms to require Gnosis SAFE multi-sig approval before manager actions execute. This enables institutional-grade controls.
+
+**Flow:**
+1. Swarm is configured with a SAFE address
+2. Manager proposes an action (swap, transaction) → creates `ProposedAction` with hash
+3. SAFE signers review and sign the message in SAFE app
+4. Manager clicks "Execute" on approved proposal
+5. **Lit Action verifies SAFE signature on-chain before signing the transaction**
+
+**Key Security Feature:** The Lit Action itself enforces the SAFE approval:
+```javascript
+// In Lit Action
+const proposalData = await Lit.Actions.fetch(`${API_URL}/proposals/${proposalId}`);
+const safeSignature = await checkSafeSignature(safeAddress, proposalData.messageHash);
+if (!safeSignature.isValid) {
+  throw new Error("SAFE has not signed this proposal");
+}
+// Only then proceed to sign
+```
+
+This means even if someone bypasses the API, the Lit PKP will refuse to sign without valid SAFE approval.
+
+**Database Changes:**
+- `Swarm.safeAddress` - Optional SAFE address
+- `Swarm.requireSafeSignoff` - Boolean flag
+- New `ProposedAction` model for tracking proposals and their status
+
 ## Future Enhancements
 
 1. **Transaction Simulation**: Use Alchemy simulation API in Lit Action to detect malicious transactions
 2. **WalletConnect Integration**: Let users connect their agent wallet to dApps
 3. **Spending Limits**: Allow users to set per-transaction or daily limits
-4. **Multi-sig Manager**: Require multiple managers to approve transactions
-5. **Fee Structure**: Take percentage of profits or flat fee
+4. **Analytics Dashboard**: Track swarm performance, TVL, transaction history
 
 ---
 
@@ -1056,11 +1115,71 @@ const permissionAccount = await deserializePermissionAccount(
 - `package.json` - Added test scripts and vitest dependency
 - `packages/shared/package.json` - Added test scripts and vitest dependency
 
+### Phase 11 Learnings (Twitter OAuth for Managers)
+
+**Completed:** 2025-01-10
+
+#### Twitter OAuth 2.0 with PKCE
+
+1. **PKCE Flow**: Twitter requires PKCE (Proof Key for Code Exchange) for OAuth 2.0. Implemented code verifier and code challenge generation using SHA-256:
+   ```typescript
+   const codeVerifier = crypto.randomBytes(32).toString("base64url");
+   const codeChallenge = crypto
+     .createHash("sha256")
+     .update(codeVerifier)
+     .digest("base64url");
+   ```
+
+2. **State Management**: Used in-memory Map to store OAuth state, code verifier, and user ID during the authorization flow. Each entry expires after 10 minutes.
+
+3. **Token Exchange**: Twitter's token endpoint requires Basic authentication with client credentials encoded in Base64:
+   ```typescript
+   Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`
+   ```
+
+4. **User Info Endpoint**: After obtaining access token, fetch user info from `https://api.twitter.com/2/users/me` to get Twitter ID and username.
+
+#### Database & Schema
+
+1. **Unique Constraint on twitterId**: Added unique constraint to prevent multiple users from linking the same Twitter account.
+
+2. **Nullable Fields**: Both `twitterId` and `twitterUsername` are optional since users may not have connected Twitter yet.
+
+#### Frontend Integration
+
+1. **Settings Page**: Created dedicated Settings page with Twitter connection UI at `/settings` route.
+
+2. **OAuth Callback Handling**: Twitter redirects back to backend callback URL, which then redirects to frontend `/settings` with success/error query parameters.
+
+3. **Visual Indicators**: Added yellow dot indicator in navigation when Twitter is not connected, prompting managers to link their account.
+
+4. **CreateSwarmModal Guard**: If user hasn't connected Twitter, modal shows a prompt to connect instead of the creation form.
+
+#### Key Files Created
+
+- `packages/client/src/pages/Settings.tsx` - Settings page with Twitter connection UI
+- `prisma/migrations/20250110000000_add_twitter_fields/migration.sql` - Database migration
+
+#### Key Files Modified
+
+- `prisma/schema.prisma` - Added twitterId, twitterUsername to User model
+- `packages/server/src/lib/env.ts` - Added Twitter OAuth environment variables
+- `packages/server/src/routes/auth.ts` - Added Twitter OAuth endpoints
+- `packages/server/src/routes/swarms.ts` - Added Twitter requirement check for swarm creation
+- `packages/shared/src/types/index.ts` - Added Twitter fields to User type, added error codes
+- `packages/client/src/App.tsx` - Added Settings route
+- `packages/client/src/components/Layout.tsx` - Added Settings link with Twitter status
+- `packages/client/src/components/CreateSwarmModal.tsx` - Added Twitter requirement check
+- `packages/client/src/pages/SwarmDiscovery.tsx` - Display manager Twitter handle
+- `packages/client/src/pages/SwarmDetail.tsx` - Display manager Twitter handle
+- `packages/client/src/pages/ManagerDashboard.tsx` - Display manager Twitter handle
+- `.env.example` - Added Twitter OAuth environment variables
+
 ---
 
-## Project Complete
+## Project Status
 
-All 10 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 11 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1073,3 +1192,4 @@ All 10 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - Loading states and skeletons
 - Unit tests for critical utilities
 - Full API documentation
+- **Twitter OAuth for manager verification**

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 
 interface CreateSwarmModalProps {
@@ -12,6 +14,7 @@ export default function CreateSwarmModal({
   onClose,
   onCreated,
 }: CreateSwarmModalProps) {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [socialUrl, setSocialUrl] = useState("");
@@ -70,6 +73,41 @@ export default function CreateSwarmModal({
             </div>
           )}
 
+          {!user?.twitterUsername ? (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
+                <p className="font-medium mb-2">Twitter Connection Required</p>
+                <p className="mb-3">
+                  You must connect your Twitter account before creating a swarm. This helps verify
+                  your identity as a trusted manager.
+                </p>
+                <Link
+                  to="/settings"
+                  onClick={handleClose}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-sm"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  Connect Twitter
+                </Link>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
@@ -153,6 +191,7 @@ export default function CreateSwarmModal({
               </button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { z } from "zod";
 export interface User {
   id: string;
   walletAddress: string;
+  twitterId: string | null;
+  twitterUsername: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,6 +130,7 @@ export enum ErrorCode {
   NOT_MANAGER = "PERM_002",
   NOT_MEMBER = "PERM_003",
   ALREADY_MEMBER = "PERM_004",
+  TWITTER_NOT_LINKED = "PERM_005",
 
   // External service errors (5xxx)
   LIT_ERROR = "EXT_001",
@@ -135,6 +138,7 @@ export enum ErrorCode {
   ALCHEMY_ERROR = "EXT_003",
   ZEROX_ERROR = "EXT_004",
   BUNDLER_ERROR = "EXT_005",
+  TWITTER_ERROR = "EXT_006",
 
   // Transaction errors (6xxx)
   TX_FAILED = "TX_001",

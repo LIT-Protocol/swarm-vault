@@ -44,9 +44,19 @@ export default function Layout() {
                   >
                     Manager
                   </Link>
-                  <span className="text-sm text-gray-600">
-                    {truncateAddress(user.walletAddress)}
-                  </span>
+                  <Link
+                    to="/settings"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                  >
+                    {user.twitterUsername ? (
+                      <span className="text-blue-500">@{user.twitterUsername}</span>
+                    ) : (
+                      <>
+                        <span>Settings</span>
+                        <span className="w-2 h-2 bg-yellow-400 rounded-full" title="Twitter not connected" />
+                      </>
+                    )}
+                  </Link>
                   <button
                     onClick={logout}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
