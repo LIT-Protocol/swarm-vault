@@ -12,7 +12,6 @@ interface SwarmListItem {
   id: string;
   name: string;
   description: string;
-  socialUrl: string | null;
   createdAt: string;
   managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
@@ -285,16 +284,6 @@ export default function SwarmDiscovery() {
                 </div>
               )}
               <div className="flex gap-2">
-                {swarm.socialUrl && (
-                  <a
-                    href={swarm.socialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    Social
-                  </a>
-                )}
                 {isAuthenticated && !swarm.isManager && (
                   <>
                     {isMember(swarm.id) ? (

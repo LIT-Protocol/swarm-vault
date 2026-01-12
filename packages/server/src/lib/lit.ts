@@ -8,8 +8,9 @@ import {
   createSiweMessage,
   generateAuthSig,
 } from "@lit-protocol/auth-helpers";
-// Use ethers v5 from the Lit SDK's dependencies for compatibility
-import { ethers } from "ethers";
+// Use ethers v5 packages for Lit SDK compatibility (Lit SDK uses ethers v5)
+import { JsonRpcProvider } from "@ethersproject/providers";
+import { Wallet } from "@ethersproject/wallet";
 import { env } from "./env.js";
 
 // Lit Chronicle Yellowstone RPC URL
@@ -55,14 +56,14 @@ export async function getLitNodeClient(): Promise<LitNodeClient> {
 /**
  * Get the subsidizing wallet from environment, connected to Lit network
  */
-function getSubsidizingWallet(): ethers.Wallet {
+function getSubsidizingWallet(): Wallet {
   if (!env.LIT_PRIVATE_KEY) {
     throw new Error("LIT_PRIVATE_KEY is required for PKP operations");
   }
-  // Create provider for Lit Chronicle Yellowstone network
-  const provider = new ethers.JsonRpcProvider(LIT_RPC_URL);
+  // Create provider for Lit Chronicle Yellowstone network (using ethers v5)
+  const provider = new JsonRpcProvider(LIT_RPC_URL);
   // Connect wallet to provider
-  return new ethers.Wallet(env.LIT_PRIVATE_KEY, provider);
+  return new Wallet(env.LIT_PRIVATE_KEY, provider);
 }
 
 /**

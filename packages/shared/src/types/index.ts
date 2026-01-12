@@ -15,7 +15,6 @@ export interface Swarm {
   id: string;
   name: string;
   description: string;
-  socialUrl: string | null;
   litPkpPublicKey: string;
   litPkpTokenId: string;
   createdAt: Date;
@@ -25,7 +24,6 @@ export interface Swarm {
 export const CreateSwarmSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(1000),
-  socialUrl: z.string().url().optional(),
 });
 
 export type CreateSwarmInput = z.infer<typeof CreateSwarmSchema>;

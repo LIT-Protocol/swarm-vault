@@ -168,7 +168,6 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
             id: true,
             name: true,
             description: true,
-            socialUrl: true,
           },
         },
       },
@@ -184,7 +183,6 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
         swarmId: m.swarmId,
         swarmName: m.swarm.name,
         swarmDescription: m.swarm.description,
-        swarmSocialUrl: m.swarm.socialUrl,
         agentWalletAddress: m.agentWalletAddress,
         status: m.status,
         joinedAt: m.joinedAt,
@@ -261,7 +259,6 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
           id: membership.swarm.id,
           name: membership.swarm.name,
           description: membership.swarm.description,
-          socialUrl: membership.swarm.socialUrl,
           memberCount: membership.swarm._count.memberships,
           managers: membership.swarm.managers.map((m) => ({
             id: m.user.id,

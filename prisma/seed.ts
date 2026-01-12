@@ -24,7 +24,6 @@ async function main() {
       id: "test-swarm-id",
       name: "Test Swarm",
       description: "A test swarm for development purposes",
-      socialUrl: "https://twitter.com/testswarm",
       litPkpPublicKey: "0x" + "0".repeat(128),
       litPkpTokenId: "0",
       managers: {

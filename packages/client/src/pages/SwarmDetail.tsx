@@ -10,7 +10,6 @@ interface SwarmData {
   id: string;
   name: string;
   description: string;
-  socialUrl: string | null;
   litPkpPublicKey?: string;
   createdAt: string;
   updatedAt: string;
@@ -127,16 +126,6 @@ export default function SwarmDetail() {
               </span>
             )}
           </div>
-          {swarm.socialUrl && (
-            <a
-              href={swarm.socialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 text-sm"
-            >
-              Social Link
-            </a>
-          )}
         </div>
 
         <p className="text-gray-600 mb-6">{swarm.description}</p>

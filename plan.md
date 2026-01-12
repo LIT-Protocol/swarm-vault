@@ -45,9 +45,10 @@ swarm-vault/
 
 A swarm is a group created by a manager. Each swarm has:
 
-- Name, description, social media URL
+- Name, description
 - A Lit Protocol PKP (owned by the manager)
 - Multiple user memberships
+- Manager's verified Twitter account displayed for trust/accountability
 
 ### Agent Wallet
 
@@ -131,7 +132,6 @@ Swarm
 ├── id (uuid)
 ├── name (string)
 ├── description (text)
-├── socialUrl (string, optional)
 ├── managerId (fk -> User)
 ├── litPkpPublicKey (string)
 ├── litPkpTokenId (string)
@@ -177,7 +177,7 @@ TransactionTarget
 
 ### 2. Manager Creates Swarm
 
-1. Manager fills out swarm form (name, description, social URL)
+1. Manager fills out swarm form (name, description)
 2. Backend calls Lit Protocol to mint a new PKP
 3. PKP public key and token ID stored with swarm
 4. Swarm created in database

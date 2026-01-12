@@ -105,7 +105,7 @@
 ### 5.1 Backend Endpoints
 - [x] `GET /api/swarms` - List all swarms (public)
 - [x] `POST /api/swarms` - Create swarm (requires auth)
-  - Validate input (name, description, socialUrl)
+  - Validate input (name, description)
   - Mint Lit PKP
   - Create swarm in database
 - [x] `GET /api/swarms/:id` - Get swarm details

@@ -10,7 +10,6 @@ interface SwarmListItem {
   id: string;
   name: string;
   description: string;
-  socialUrl: string | null;
   createdAt: string;
   managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;

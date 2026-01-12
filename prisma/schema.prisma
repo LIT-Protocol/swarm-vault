@@ -26,7 +26,6 @@ model Swarm {
   id              String   @id @default(uuid())
   name            String
   description     String
-  socialUrl       String?
   litPkpPublicKey String
   litPkpTokenId   String
   litPkpEthAddress String  // ETH address derived from PKP public key

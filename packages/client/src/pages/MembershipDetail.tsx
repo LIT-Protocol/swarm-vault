@@ -14,7 +14,6 @@ interface MembershipDetailData {
     id: string;
     name: string;
     description: string;
-    socialUrl: string | null;
     memberCount: number;
     managers: { id: string; walletAddress: string }[];
   };
@@ -136,16 +135,6 @@ export default function MembershipDetail() {
 
         <div className="mt-4 flex gap-4 text-sm text-gray-500">
           <span>{membership.swarm.memberCount} members</span>
-          {membership.swarm.socialUrl && (
-            <a
-              href={membership.swarm.socialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800"
-            >
-              Social Link
-            </a>
-          )}
         </div>
 
         {membership.swarm.managers.length > 0 && (

@@ -215,8 +215,7 @@ Content-Type: application/json
 Request:
 {
   "name": "My Swarm",
-  "description": "Description here",
-  "socialUrl": "https://twitter.com/..."  // optional
+  "description": "Description here"
 }
 
 Response:
