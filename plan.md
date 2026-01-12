@@ -1175,11 +1175,65 @@ const permissionAccount = await deserializePermissionAccount(
 - `packages/client/src/pages/ManagerDashboard.tsx` - Display manager Twitter handle
 - `.env.example` - Added Twitter OAuth environment variables
 
+### Phase 12 Learnings (0x Swap Fee Collection)
+
+**Completed:** 2025-01-12
+
+#### 0x API Fee Parameters
+
+1. **Fee Parameter Names**: The 0x API v1 supports affiliate fees via:
+   - `buyTokenPercentageFee` - decimal percentage of buy token (e.g., 0.005 for 0.5%)
+   - `feeRecipient` - wallet address to receive the fee
+
+2. **Fee Calculation from Response**: The API response includes both gross and net amounts:
+   - `grossBuyAmount` - total amount before fees
+   - `buyAmount` - net amount after fees
+   - Fee amount = `grossBuyAmount - buyAmount`
+
+3. **Basis Points Conversion**: Implemented helper functions in shared constants:
+   - `bpsToPercentage(bps)` - converts basis points to decimal (50 → 0.005)
+   - `formatBps(bps)` - formats for display (50 → "0.5%")
+
+#### Environment Configuration
+
+1. **Optional Fee Recipient**: Made `SWAP_FEE_RECIPIENT` optional - if not set, no fees are collected. This allows deploying without fees initially.
+
+2. **Configurable Fee Rate**: `SWAP_FEE_BPS` defaults to 50 (0.5%) but can be adjusted from 0-1000 (0-10%).
+
+3. **Fee Config Helper**: Created `getFeeConfig()` function in zeroEx.ts that returns null if no recipient is configured, making conditional fee logic clean.
+
+#### Fee Transparency in UI
+
+1. **Preview Display**: Added a prominent amber-colored fee disclosure box in the swap preview showing:
+   - Fee rate (percentage)
+   - Total fee amount (in buy token)
+   - Fee recipient address (truncated)
+
+2. **API Response Structure**: Both preview and execute endpoints now return fee info:
+   ```typescript
+   fee: {
+     bps: number;
+     percentage: string; // e.g., "0.5%"
+     recipientAddress: string;
+   } | null
+   ```
+
+3. **Per-Member Fee Tracking**: Each member's preview includes their individual `feeAmount` for detailed breakdown.
+
+#### Key Files Created/Modified
+
+- `packages/server/src/lib/env.ts` - Added SWAP_FEE_RECIPIENT, SWAP_FEE_BPS
+- `packages/shared/src/constants/index.ts` - Added SWAP_FEE, bpsToPercentage, formatBps
+- `packages/server/src/lib/zeroEx.ts` - Added getFeeConfig(), fee params in API calls, fee calculation
+- `packages/server/src/routes/swap.ts` - Added fee info to preview/execute responses
+- `packages/client/src/components/SwapForm.tsx` - Added fee breakdown UI in preview
+- `.env.example` - Added fee environment variables
+
 ---
 
 ## Project Status
 
-All 11 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 12 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1193,3 +1247,4 @@ All 11 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - Unit tests for critical utilities
 - Full API documentation
 - **Twitter OAuth for manager verification**
+- **0x Swap Fee Collection (0.5% platform fee)**

@@ -371,28 +371,28 @@
 
 ---
 
-## Phase 12: 0x Swap Fee Collection
+## Phase 12: 0x Swap Fee Collection [COMPLETED]
 
 ### 12.1 Fee Configuration
-- [ ] Add fee recipient environment variable
+- [x] Add fee recipient environment variable
   - `SWAP_FEE_RECIPIENT` - Wallet address to receive fees
   - `SWAP_FEE_BPS` - Fee in basis points (default 50 = 0.5%)
-- [ ] Update shared constants with fee configuration
+- [x] Update shared constants with fee configuration
 
 ### 12.2 0x Fee Integration
-- [ ] Update `zeroEx.ts` to include fee parameters in quotes
+- [x] Update `zeroEx.ts` to include fee parameters in quotes
   - 0x API supports `buyTokenPercentageFee` parameter
   - Fee is taken from buy token and sent to recipient
-- [ ] Update swap preview to show fee amount
+- [x] Update swap preview to show fee amount
   - Display fee in absolute terms and percentage
   - Show fee recipient (truncated address)
-- [ ] Ensure fee is included in swap execution calls
+- [x] Ensure fee is included in swap execution calls
 
 ### 12.3 Fee Transparency UI
-- [ ] Update SwapForm preview to display fee breakdown
+- [x] Update SwapForm preview to display fee breakdown
   - "Platform fee: X tokens (0.5%)"
   - "You receive: Y tokens"
-- [ ] Add fee disclosure to swarm documentation/FAQ
+- [x] Add fee disclosure to swarm documentation/FAQ
 
 ---
 

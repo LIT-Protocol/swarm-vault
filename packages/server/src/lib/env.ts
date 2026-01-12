@@ -15,6 +15,9 @@ const envSchema = z.object({
   TWITTER_CLIENT_ID: z.string().optional(),
   TWITTER_CLIENT_SECRET: z.string().optional(),
   TWITTER_CALLBACK_URL: z.string().url().optional(),
+  // Swap Fee Collection
+  SWAP_FEE_RECIPIENT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+  SWAP_FEE_BPS: z.coerce.number().min(0).max(1000).default(50), // Default 50 bps = 0.5%
 });
 
 export type Env = z.infer<typeof envSchema>;

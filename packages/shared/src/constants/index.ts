@@ -114,6 +114,22 @@ export function getTokensForChain(chainId: number): TokenInfo[] {
   return BASE_SEPOLIA_TOKENS;
 }
 
+// Swap Fee Configuration
+export const SWAP_FEE = {
+  DEFAULT_BPS: 50, // 50 basis points = 0.5%
+  MAX_BPS: 1000, // 10% maximum
+} as const;
+
+// Convert basis points to percentage for 0x API (e.g., 50 bps -> 0.005)
+export function bpsToPercentage(bps: number): number {
+  return bps / 10000;
+}
+
+// Format basis points for display (e.g., 50 -> "0.5%")
+export function formatBps(bps: number): string {
+  return `${bps / 100}%`;
+}
+
 // API routes
 export const API_ROUTES = {
   AUTH: {

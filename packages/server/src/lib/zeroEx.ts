@@ -1,8 +1,29 @@
 import { type Address } from "viem";
 import { env } from "./env.js";
+import { bpsToPercentage } from "@swarm-vault/shared";
 
 // 0x API base URL for Base chain
 const ZEROX_API_BASE = "https://api.0x.org";
+
+// Fee configuration
+export interface FeeConfig {
+  recipientAddress: Address;
+  bps: number; // Basis points (e.g., 50 = 0.5%)
+}
+
+/**
+ * Get the current fee configuration from environment
+ * Returns null if no fee recipient is configured
+ */
+export function getFeeConfig(): FeeConfig | null {
+  if (!env.SWAP_FEE_RECIPIENT) {
+    return null;
+  }
+  return {
+    recipientAddress: env.SWAP_FEE_RECIPIENT as Address,
+    bps: env.SWAP_FEE_BPS,
+  };
+}
 
 // Permit2 contract address (same across all chains)
 export const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as Address;
@@ -93,6 +114,7 @@ export interface SwapPreviewResult {
   estimatedPriceImpact: string;
   sources: Array<{ name: string; proportion: string }>;
   gasEstimate: string;
+  feeAmount?: string; // Fee amount in buy token (if fees enabled)
   error?: string;
 }
 
@@ -109,6 +131,7 @@ export interface SwapExecuteData {
   };
   permit2Data?: ZeroExQuote["permit2"];
   allowanceTarget: Address;
+  feeAmount?: string; // Fee amount in buy token (if fees enabled)
   error?: string;
 }
 
@@ -147,6 +170,13 @@ export async function getPrice(params: SwapQuoteParams): Promise<ZeroExPriceResp
     queryParams.set("slippagePercentage", params.slippagePercentage.toString());
   }
 
+  // Add fee parameters if configured
+  const feeConfig = getFeeConfig();
+  if (feeConfig) {
+    queryParams.set("buyTokenPercentageFee", bpsToPercentage(feeConfig.bps).toString());
+    queryParams.set("feeRecipient", feeConfig.recipientAddress);
+  }
+
   const url = `${ZEROX_API_BASE}/swap/v1/price?${queryParams.toString()}`;
 
   const response = await fetch(url, {
@@ -181,6 +211,13 @@ export async function getQuote(params: SwapQuoteParams): Promise<ZeroExQuote> {
 
   if (params.slippagePercentage !== undefined) {
     queryParams.set("slippagePercentage", params.slippagePercentage.toString());
+  }
+
+  // Add fee parameters if configured
+  const feeConfig = getFeeConfig();
+  if (feeConfig) {
+    queryParams.set("buyTokenPercentageFee", bpsToPercentage(feeConfig.bps).toString());
+    queryParams.set("feeRecipient", feeConfig.recipientAddress);
   }
 
   const url = `${ZEROX_API_BASE}/swap/v1/quote?${queryParams.toString()}`;
@@ -238,6 +275,16 @@ export async function getSwapPreviewForWallets(
         slippagePercentage,
       });
 
+      // Calculate fee amount (grossBuyAmount - buyAmount)
+      let feeAmount: string | undefined;
+      if (price.grossBuyAmount && price.buyAmount) {
+        const gross = BigInt(price.grossBuyAmount);
+        const net = BigInt(price.buyAmount);
+        if (gross > net) {
+          feeAmount = (gross - net).toString();
+        }
+      }
+
       results.push({
         walletAddress,
         sellToken,
@@ -247,6 +294,7 @@ export async function getSwapPreviewForWallets(
         estimatedPriceImpact: price.estimatedPriceImpact || "0",
         sources: price.sources,
         gasEstimate: price.estimatedGas,
+        feeAmount,
       });
     } catch (error) {
       console.error(`[0x] Failed to get price for wallet ${walletAddress}:`, error);
@@ -305,6 +353,16 @@ export async function getSwapExecuteDataForWallets(
         slippagePercentage,
       });
 
+      // Calculate fee amount (grossBuyAmount - buyAmount)
+      let feeAmount: string | undefined;
+      if (quote.grossBuyAmount && quote.buyAmount) {
+        const gross = BigInt(quote.grossBuyAmount);
+        const net = BigInt(quote.buyAmount);
+        if (gross > net) {
+          feeAmount = (gross - net).toString();
+        }
+      }
+
       results.push({
         walletAddress,
         sellToken,
@@ -318,6 +376,7 @@ export async function getSwapExecuteDataForWallets(
         },
         permit2Data: quote.permit2,
         allowanceTarget: quote.allowanceTarget as Address,
+        feeAmount,
       });
     } catch (error) {
       console.error(`[0x] Failed to get quote for wallet ${walletAddress}:`, error);

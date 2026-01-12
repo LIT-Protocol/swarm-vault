@@ -6,7 +6,9 @@ import {
   getSwapPreviewForWallets,
   getSwapExecuteDataForWallets,
   isNativeToken,
+  getFeeConfig,
 } from "../lib/zeroEx.js";
+import { formatBps } from "@swarm-vault/shared";
 import { getEthBalance, getTokenBalance, getWalletBalancesForDisplay } from "../lib/alchemy.js";
 import { executeSwapTransaction } from "../lib/swapExecutor.js";
 import { type Address } from "viem";
@@ -155,11 +157,21 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
         agentWalletAddress: preview.walletAddress,
         sellAmount: preview.sellAmount,
         buyAmount: preview.buyAmount,
+        feeAmount: preview.feeAmount,
         estimatedPriceImpact: preview.estimatedPriceImpact,
         sources: preview.sources,
         error: preview.error,
       };
     });
+
+    // Calculate total fee amount
+    const totalFeeAmount = previews.reduce(
+      (sum, p) => sum + BigInt(p.feeAmount || "0"),
+      0n
+    );
+
+    // Get fee config for response
+    const feeConfig = getFeeConfig();
 
     res.json({
       success: true,
@@ -171,8 +183,15 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
         members: memberPreviews,
         totalSellAmount: totalSellAmount.toString(),
         totalBuyAmount: totalBuyAmount.toString(),
+        totalFeeAmount: totalFeeAmount.toString(),
         successCount: previews.filter((p) => !p.error).length,
         errorCount: previews.filter((p) => p.error).length,
+        // Fee info for transparency
+        fee: feeConfig ? {
+          bps: feeConfig.bps,
+          percentage: formatBps(feeConfig.bps),
+          recipientAddress: feeConfig.recipientAddress,
+        } : null,
       },
     });
   } catch (error) {
@@ -248,6 +267,9 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
+    // Get fee config for the transaction record
+    const feeConfig = getFeeConfig();
+
     // Create a transaction record
     const transaction = await prisma.transaction.create({
       data: {
@@ -259,6 +281,10 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
           buyToken,
           sellPercentage,
           slippagePercentage,
+          fee: feeConfig ? {
+            bps: feeConfig.bps,
+            recipientAddress: feeConfig.recipientAddress,
+          } : null,
         },
       },
     });
@@ -311,6 +337,12 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
         status: "PENDING",
         memberCount: swarm.memberships.length,
         message: "Swap execution started. Poll transaction status for updates.",
+        // Include fee info for transparency
+        fee: feeConfig ? {
+          bps: feeConfig.bps,
+          percentage: formatBps(feeConfig.bps),
+          recipientAddress: feeConfig.recipientAddress,
+        } : null,
       },
     });
   } catch (error) {
