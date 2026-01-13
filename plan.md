@@ -1229,6 +1229,23 @@ const permissionAccount = await deserializePermissionAccount(
 - `packages/client/src/components/SwapForm.tsx` - Added fee breakdown UI in preview
 - `.env.example` - Added fee environment variables
 
+### Phase 12.5: Unique Agent Wallet Index per Swarm
+
+**Problem:** ZeroDev smart wallet addresses are deterministic based on the owner's EOA and an index. If users use other ZeroDev-powered apps with the same index (default 0), they could end up with the same wallet address across apps, causing fund mixing and confusion.
+
+**Solution:** Use a unique account index derived from the swarm ID to ensure agent wallets are unique to Swarm Vault.
+
+**Implementation:**
+- Compute index as: `BigInt(keccak256("swarm_vault_<swarmId>"))`
+- Pass this index when creating the kernel account in `createAgentWallet`
+- The index is uint256 in ZeroDev (full keccak256 hash fits)
+
+**Files to Update:**
+- `packages/client/src/lib/smartWallet.ts` - Update `createAgentWallet` to compute and use swarm-specific index
+- Potentially `packages/server/src/lib/zerodev.ts` if server-side address computation exists
+
+**Migration Consideration:** Existing memberships have their `sessionKeyApproval` stored with the old index. New memberships will get different addresses. This is acceptable for a pre-production app.
+
 ---
 
 ## Project Status

@@ -396,6 +396,19 @@
 
 ---
 
+## Phase 12.5: Unique Agent Wallet Index per Swarm
+
+### 12.5.1 Account Index Implementation
+- [ ] Update smart wallet creation to use unique index per swarm
+  - Compute index as `BigInt(keccak256("swarm_vault_<swarmId>"))` (uint256)
+  - This ensures users get a unique agent wallet address for this app vs other ZeroDev apps
+- [ ] Update client-side `createAgentWallet` function in `packages/client/src/lib/smartWallet.ts`
+  - Pass computed index to `createKernelAccount`
+- [ ] Update server-side `computeSmartWalletAddress` if applicable
+- [ ] Verify existing memberships still work (index is stored in sessionKeyApproval)
+
+---
+
 ## Phase 13: Gnosis SAFE Sign-Off for Manager Actions
 
 ### 13.1 SAFE Configuration
