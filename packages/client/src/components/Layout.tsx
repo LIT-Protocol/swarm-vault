@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Outlet, Link } from "react-router-dom";
 import { useAccount, useConnect } from "wagmi";
 import { truncateAddress } from "@swarm-vault/shared";
@@ -5,11 +6,32 @@ import { useAuth } from "../contexts/AuthContext";
 
 export default function Layout() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
+  const { connect, connectors, isPending: isConnecting, status, reset } = useConnect();
   const { user, isAuthenticated, isLoading, error, login, logout } = useAuth();
+  const pendingConnectRef = useRef(false);
 
-  const handleConnect = async () => {
-    if (!isConnected) {
+  // Handle connecting after reset completes
+  useEffect(() => {
+    if (pendingConnectRef.current && status === 'idle' && connectors[0]) {
+      pendingConnectRef.current = false;
+      connect({ connector: connectors[0] });
+    }
+  }, [status, connect, connectors]);
+
+  const handleConnect = () => {
+    if (isConnected || status === 'pending') {
+      return;
+    }
+
+    // If in error state, reset first and connect after state updates
+    if (status === 'error') {
+      pendingConnectRef.current = true;
+      reset();
+      return;
+    }
+
+    // Normal connect
+    if (connectors[0]) {
       connect({ connector: connectors[0] });
     }
   };

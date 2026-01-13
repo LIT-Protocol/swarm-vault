@@ -476,19 +476,71 @@
 
 ---
 
+## Phase 14: Migrate to Naga Lit Network & SDK v8
+
+### 14.1 SDK Upgrade
+- [ ] Upgrade Lit Protocol packages from v7 to v8
+  - `@lit-protocol/lit-node-client`
+  - `@lit-protocol/contracts-sdk`
+  - `@lit-protocol/auth-helpers`
+  - `@lit-protocol/constants`
+- [ ] Review breaking changes in v8 SDK
+  - Check for API changes in `LitNodeClient`
+  - Check for changes in `LitContracts`
+  - Review session signature generation changes
+  - Review auth signature changes
+- [ ] Update TypeScript types for v8 SDK
+
+### 14.2 Network Migration (Datil → Naga)
+- [ ] Update environment variables
+  - Change `LIT_NETWORK` from `datil-dev`/`datil-test`/`datil` to `naga-dev`/`naga-test`/`naga`
+- [ ] Update network references in code
+  - `packages/server/src/lib/lit.ts` - Update network constants
+  - `packages/server/src/lib/env.ts` - Update network validation
+- [ ] Verify RPC endpoints for Naga network
+- [ ] Update documentation with new network names
+
+### 14.3 PKP Migration
+- [ ] Test PKP minting on Naga network
+- [ ] Verify existing PKP compatibility (or document migration path)
+- [ ] Update PKP-related functions for any v8 API changes
+  - `mintPkp()`
+  - `getSessionSigs()`
+
+### 14.4 Lit Action Updates
+- [ ] Review Lit Action execution changes in v8
+- [ ] Update `packages/lit-actions/src/signTransaction.ts` if needed
+- [ ] Test Lit Action signing on Naga network
+- [ ] Verify signature format compatibility with ZeroDev
+
+### 14.5 Integration Testing
+- [ ] Test full swarm creation flow on Naga
+- [ ] Test user join flow with PKP session signing
+- [ ] Test transaction execution via PKP
+- [ ] Test swap execution via PKP
+- [ ] Document any differences in behavior
+
+### 14.6 Migration Guide
+- [ ] Document upgrade steps for existing deployments
+- [ ] Create migration script for existing swarms (if PKPs need re-minting)
+- [ ] Update README with Naga network information
+- [ ] Update `.env.example` with new network values
+
+---
+
 ## Future Phases (Post-MVP)
 
-### Phase 14: WalletConnect Integration
+### Phase 15: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 15: Transaction Simulation
+### Phase 16: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 16: Advanced Features
+### Phase 17: Advanced Features
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics
