@@ -79,7 +79,11 @@ export default function CreateSwarmModal({
                 </p>
                 <Link
                   to="/settings"
-                  onClick={handleClose}
+                  onClick={() => {
+                    // Save intent to localStorage so we can restore after Twitter OAuth
+                    localStorage.setItem("pendingAction", "createSwarm");
+                    handleClose();
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-sm"
                 >
                   <svg

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { truncateAddress } from "@swarm-vault/shared";
 import { api } from "../lib/api";
 import CreateSwarmModal from "../components/CreateSwarmModal";
@@ -21,6 +21,16 @@ export default function ManagerDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Check for openCreateModal URL param (e.g., after Twitter OAuth redirect)
+  useEffect(() => {
+    if (searchParams.get("openCreateModal") === "true") {
+      setIsCreateModalOpen(true);
+      // Clear the URL param
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchSwarms = async () => {
     try {

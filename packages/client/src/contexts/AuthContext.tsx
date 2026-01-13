@@ -20,6 +20,7 @@ interface AuthContextType {
   error: string | null;
   login: () => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -135,6 +136,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     disconnect();
   }, [disconnect]);
 
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem(STORAGE_KEY);
+    if (token) {
+      try {
+        const userData = await api.get<User>("/api/auth/me");
+        setUser(userData);
+      } catch {
+        // Token invalid, clear it
+        localStorage.removeItem(STORAGE_KEY);
+        api.setToken(null);
+        setUser(null);
+      }
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -144,6 +160,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error,
         login,
         logout,
+        refreshUser,
       }}
     >
       {children}

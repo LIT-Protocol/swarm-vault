@@ -9,6 +9,8 @@ import { getEntryPoint, KERNEL_V3_1 } from "@zerodev/sdk/constants";
 import {
   http,
   createPublicClient,
+  keccak256,
+  toHex,
   type Address,
   type Hex,
   encodeFunctionData,
@@ -24,6 +26,22 @@ import type { SmartAccount } from "viem/account-abstraction";
 // Constants
 const KERNEL_VERSION = KERNEL_V3_1;
 const ENTRY_POINT = getEntryPoint("0.7");
+
+/**
+ * Generates a deterministic index from a swarm ID using keccak256.
+ * This ensures:
+ * 1. The same user+swarm combination always gets the same wallet
+ * 2. Agent wallets are unique to Swarm Vault (won't collide with other ZeroDev apps)
+ *
+ * @param swarmId - The swarm UUID
+ * @returns A bigint index derived from keccak256("swarm_vault_<swarmId>")
+ */
+export function swarmIdToIndex(swarmId: string): bigint {
+  // Use keccak256 hash of "swarm_vault_<swarmId>" for a unique, deterministic index
+  const hash = keccak256(toHex(`swarm_vault_${swarmId}`));
+  // Convert hex hash to bigint (uint256)
+  return BigInt(hash);
+}
 
 /**
  * Get the chain configuration based on chain ID

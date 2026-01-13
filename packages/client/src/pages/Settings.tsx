@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -17,11 +18,24 @@ export default function Settings() {
     const twitterError = searchParams.get("twitter_error");
 
     if (twitterSuccess) {
-      setMessage({ type: "success", text: "Twitter account connected successfully!" });
       // Clear the URL params
       setSearchParams({});
-      // Refresh user data
-      window.location.reload();
+
+      // Check for pending action (e.g., user was trying to create a swarm)
+      const pendingAction = localStorage.getItem("pendingAction");
+      localStorage.removeItem("pendingAction");
+
+      if (pendingAction === "createSwarm") {
+        // Redirect to manager dashboard with flag to open create modal
+        refreshUser().then(() => {
+          navigate("/manage?openCreateModal=true");
+        });
+      } else {
+        // Just refresh user data and stay on settings
+        setMessage({ type: "success", text: "Twitter account connected successfully!" });
+        refreshUser();
+      }
+      return;
     } else if (twitterError) {
       let errorText = "Failed to connect Twitter account";
       switch (twitterError) {
@@ -48,8 +62,10 @@ export default function Settings() {
       }
       setMessage({ type: "error", text: errorText });
       setSearchParams({});
+      // Clear any pending action since auth failed
+      localStorage.removeItem("pendingAction");
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, navigate, refreshUser]);
 
   const handleConnectTwitter = async () => {
     setIsConnecting(true);

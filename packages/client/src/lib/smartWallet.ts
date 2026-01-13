@@ -3,6 +3,8 @@ import {
   http,
   getAddress,
   encodeFunctionData,
+  keccak256,
+  toHex,
   type Address,
   type WalletClient,
   type Transport,
@@ -137,19 +139,19 @@ export async function createAgentWallet(
 }
 
 /**
- * Generates a deterministic index from a swarm ID.
- * This ensures the same user+swarm combination always gets the same wallet.
+ * Generates a deterministic index from a swarm ID using keccak256.
+ * This ensures:
+ * 1. The same user+swarm combination always gets the same wallet
+ * 2. Agent wallets are unique to Swarm Vault (won't collide with other ZeroDev apps)
  *
  * @param swarmId - The swarm UUID
- * @returns A bigint index derived from the swarm ID
+ * @returns A bigint index derived from keccak256("swarm_vault_<swarmId>")
  */
 export function swarmIdToIndex(swarmId: string): bigint {
-  // Simple hash: sum of char codes
-  let hash = 0n;
-  for (let i = 0; i < swarmId.length; i++) {
-    hash = (hash * 31n + BigInt(swarmId.charCodeAt(i))) % (2n ** 64n);
-  }
-  return hash;
+  // Use keccak256 hash of "swarm_vault_<swarmId>" for a unique, deterministic index
+  const hash = keccak256(toHex(`swarm_vault_${swarmId}`));
+  // Convert hex hash to bigint (uint256)
+  return BigInt(hash);
 }
 
 // ============================================================================

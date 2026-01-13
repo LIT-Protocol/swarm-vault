@@ -399,13 +399,15 @@
 ## Phase 12.5: Unique Agent Wallet Index per Swarm
 
 ### 12.5.1 Account Index Implementation
-- [ ] Update smart wallet creation to use unique index per swarm
+- [x] Update smart wallet creation to use unique index per swarm
   - Compute index as `BigInt(keccak256("swarm_vault_<swarmId>"))` (uint256)
   - This ensures users get a unique agent wallet address for this app vs other ZeroDev apps
-- [ ] Update client-side `createAgentWallet` function in `packages/client/src/lib/smartWallet.ts`
-  - Pass computed index to `createKernelAccount`
-- [ ] Update server-side `computeSmartWalletAddress` if applicable
-- [ ] Verify existing memberships still work (index is stored in sessionKeyApproval)
+- [x] Update client-side `createAgentWallet` function in `packages/client/src/lib/smartWallet.ts`
+  - Updated `swarmIdToIndex()` to use keccak256 hash
+- [x] Update server-side `computeSmartWalletAddress` if applicable
+  - Added matching `swarmIdToIndex()` in `packages/server/src/lib/zerodev.ts`
+- [x] Verify existing memberships still work (index is stored in sessionKeyApproval)
+  - **Note:** Existing test memberships will need to be recreated (new index = different address)
 
 ---
 

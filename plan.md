@@ -1240,11 +1240,13 @@ const permissionAccount = await deserializePermissionAccount(
 - Pass this index when creating the kernel account in `createAgentWallet`
 - The index is uint256 in ZeroDev (full keccak256 hash fits)
 
-**Files to Update:**
-- `packages/client/src/lib/smartWallet.ts` - Update `createAgentWallet` to compute and use swarm-specific index
-- Potentially `packages/server/src/lib/zerodev.ts` if server-side address computation exists
+**Files Updated:**
+- `packages/client/src/lib/smartWallet.ts` - Updated `swarmIdToIndex()` to use keccak256
+- `packages/server/src/lib/zerodev.ts` - Added matching `swarmIdToIndex()` for consistency
 
-**Migration Consideration:** Existing memberships have their `sessionKeyApproval` stored with the old index. New memberships will get different addresses. This is acceptable for a pre-production app.
+**Migration Consideration:** Existing memberships have their `sessionKeyApproval` stored with the old index. New memberships will get different addresses. This is acceptable for a pre-production app. Existing test users will need to leave and rejoin swarms to get new agent wallets.
+
+**Status:** ✅ Completed
 
 ---
 
