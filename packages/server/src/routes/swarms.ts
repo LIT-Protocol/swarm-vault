@@ -339,7 +339,12 @@ router.patch("/:id/safe", authMiddleware, async (req: Request, res: Response) =>
       return;
     }
 
-    const { safeAddress, requireSafeSignoff } = parseResult.data;
+    let { safeAddress, requireSafeSignoff } = parseResult.data;
+
+    // Strip network prefix from SAFE address (e.g., "base:0x..." -> "0x...")
+    if (safeAddress && safeAddress.includes(":")) {
+      safeAddress = safeAddress.slice(safeAddress.indexOf(":") + 1);
+    }
 
     // If enabling SAFE sign-off, validate the SAFE address
     if (requireSafeSignoff && safeAddress) {

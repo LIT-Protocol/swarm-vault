@@ -32,17 +32,30 @@ export default function SafeConfigModal({
     }
   }, [isOpen, currentSafeAddress, currentRequireSafeSignoff]);
 
+  // Strip network prefix from SAFE address (e.g., "base:0x..." -> "0x...")
+  const parseSafeAddress = (address: string): string => {
+    if (!address) return "";
+    // Handle format like "base:0x..." or "eth:0x..."
+    const colonIndex = address.indexOf(":");
+    if (colonIndex !== -1) {
+      return address.slice(colonIndex + 1);
+    }
+    return address;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate address format
-    if (safeAddress && !safeAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+    // Parse and validate address format
+    const cleanAddress = parseSafeAddress(safeAddress.trim());
+
+    if (cleanAddress && !cleanAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       setError("Invalid SAFE address format");
       return;
     }
 
     // Can't require signoff without address
-    if (requireSafeSignoff && !safeAddress) {
+    if (requireSafeSignoff && !cleanAddress) {
       setError("Please enter a SAFE address to enable sign-off requirement");
       return;
     }
@@ -52,7 +65,7 @@ export default function SafeConfigModal({
       setError(null);
 
       await api.patch(`/api/swarms/${swarmId}/safe`, {
-        safeAddress: safeAddress || null,
+        safeAddress: cleanAddress || null,
         requireSafeSignoff,
       });
 

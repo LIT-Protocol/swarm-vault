@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import { getTokensForChain, type TokenInfo } from "@swarm-vault/shared";
 import { formatUnits } from "viem";
+import { useSignMessage } from "wagmi";
 
 interface SwapFormProps {
   swarmId: string;
@@ -68,6 +69,7 @@ interface ProposalResult {
   id: string;
   actionType: string;
   safeMessageHash: string;
+  safeSigningHash: string; // The EIP-712 hash to sign (as raw bytes)
   status: string;
   signUrl?: string;
 }
@@ -157,6 +159,8 @@ export default function SwapForm({
     }
   };
 
+  const { signMessageAsync } = useSignMessage();
+
   const handleExecute = async () => {
     try {
       setIsExecuting(true);
@@ -164,7 +168,7 @@ export default function SwapForm({
       setError(null);
 
       if (requiresSafeSignoff) {
-        // Create a proposal instead of executing directly
+        // Step 1: Create a proposal
         const result = await api.post<ProposalResult>(
           `/api/swarms/${swarmId}/proposals`,
           {
@@ -179,6 +183,30 @@ export default function SwapForm({
             expiresInHours: 24,
           }
         );
+
+        // Step 2: Sign the Safe message hash to propose to SAFE
+        // We must sign the safeSigningHash as raw bytes (not as a string)
+        // This is the EIP-712 hash that Safe expects for off-chain message signing
+        try {
+          const signature = await signMessageAsync({
+            message: { raw: result.safeSigningHash as `0x${string}` },
+          });
+
+          // Step 3: Submit the signature to propose the message to SAFE
+          const proposeResult = await api.post<{
+            id: string;
+            safeMessageHash: string;
+            signUrl: string;
+            message: string;
+          }>(`/api/proposals/${result.id}/propose-to-safe`, { signature });
+
+          // Update the signUrl from the propose result
+          result.signUrl = proposeResult.signUrl;
+        } catch (signError) {
+          // If signing fails, still show the proposal result but with a warning
+          console.warn("Failed to sign and propose to SAFE:", signError);
+          // The signUrl won't work until the message is proposed, but user can try again
+        }
 
         setProposalResult(result);
         setStep("done");

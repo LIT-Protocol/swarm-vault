@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../lib/api";
 
@@ -18,7 +17,22 @@ export default function CreateSwarmModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleConnectTwitter = async () => {
+    setIsConnectingTwitter(true);
+    setError(null);
+    try {
+      // Save intent to localStorage so we can restore after Twitter OAuth
+      localStorage.setItem("pendingAction", "createSwarm");
+      const { authUrl } = await api.get<{ authUrl: string }>("/api/auth/twitter");
+      window.location.href = authUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to initiate Twitter connection");
+      setIsConnectingTwitter(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,14 +91,10 @@ export default function CreateSwarmModal({
                   You must connect your Twitter account before creating a swarm. This helps verify
                   your identity as a trusted manager.
                 </p>
-                <Link
-                  to="/settings"
-                  onClick={() => {
-                    // Save intent to localStorage so we can restore after Twitter OAuth
-                    localStorage.setItem("pendingAction", "createSwarm");
-                    handleClose();
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-sm"
+                <button
+                  onClick={handleConnectTwitter}
+                  disabled={isConnectingTwitter}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg
                     className="w-4 h-4"
@@ -94,8 +104,8 @@ export default function CreateSwarmModal({
                   >
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
-                  Connect Twitter
-                </Link>
+                  {isConnectingTwitter ? "Connecting..." : "Connect Twitter"}
+                </button>
               </div>
               <div className="flex justify-end">
                 <button

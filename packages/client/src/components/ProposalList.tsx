@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import type { ProposedActionStatus, ProposedActionType } from "@swarm-vault/shared";
+import { useSignMessage } from "wagmi";
 
 interface ProposalData {
   id: string;
@@ -14,6 +15,7 @@ interface ProposalData {
     template?: unknown;
   };
   safeMessageHash: string;
+  safeSigningHash?: string; // The EIP-712 hash to sign (as raw bytes)
   status: ProposedActionStatus;
   proposedAt: string;
   approvedAt: string | null;
@@ -39,6 +41,9 @@ export default function ProposalList({
   const [error, setError] = useState<string | null>(null);
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [checkingStatusId, setCheckingStatusId] = useState<string | null>(null);
+  const [signingId, setSigningId] = useState<string | null>(null);
+
+  const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
     if (requiresSafeSignoff) {
@@ -135,6 +140,52 @@ export default function ProposalList({
     }
   };
 
+  const signAndPropose = async (proposal: ProposalData) => {
+    try {
+      setSigningId(proposal.id);
+
+      if (!proposal.safeSigningHash) {
+        alert("Error: Missing Safe signing hash. Please refresh the page.");
+        return;
+      }
+
+      // Sign the Safe message hash as raw bytes
+      // This is the EIP-712 hash that Safe expects for off-chain message signing
+      const signature = await signMessageAsync({
+        message: { raw: proposal.safeSigningHash as `0x${string}` },
+      });
+
+      // Submit the signature to propose to SAFE
+      const result = await api.post<{
+        id: string;
+        safeMessageHash: string;
+        signUrl: string;
+        message: string;
+      }>(`/api/proposals/${proposal.id}/propose-to-safe`, { signature });
+
+      // Update the proposal's signUrl
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === proposal.id
+            ? { ...p, signUrl: result.signUrl }
+            : p
+        )
+      );
+
+      alert("Message successfully proposed to SAFE! Other owners can now sign in the SAFE app.");
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to sign and propose";
+      // Check for specific errors
+      if (errorMsg.includes("not a SAFE owner") || errorMsg.includes("Signer")) {
+        alert("Error: Your wallet is not a SAFE owner. Only SAFE owners can propose messages for signing.");
+      } else {
+        alert(errorMsg);
+      }
+    } finally {
+      setSigningId(null);
+    }
+  };
+
   const getStatusBadge = (status: ProposedActionStatus) => {
     const styles: Record<ProposedActionStatus, string> = {
       PROPOSED: "bg-yellow-100 text-yellow-800",
@@ -226,6 +277,27 @@ export default function ProposalList({
 
                 {/* Actions */}
                 <div className="flex gap-2 flex-wrap">
+                  {proposal.status === "PROPOSED" && (
+                    <button
+                      onClick={() => signAndPropose(proposal)}
+                      disabled={signingId === proposal.id}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {signingId === proposal.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                          Signing...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Sign & Propose to SAFE
+                        </>
+                      )}
+                    </button>
+                  )}
                   {proposal.signUrl && proposal.status === "PROPOSED" && (
                     <a
                       href={proposal.signUrl}
@@ -236,7 +308,7 @@ export default function ProposalList({
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                      Sign in SAFE
+                      Open in SAFE
                     </a>
                   )}
                   <button

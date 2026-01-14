@@ -28,7 +28,7 @@ export default function Settings() {
       if (pendingAction === "createSwarm") {
         // Redirect to manager dashboard with flag to open create modal
         refreshUser().then(() => {
-          navigate("/manage?openCreateModal=true");
+          navigate("/manager?openCreateModal=true");
         });
       } else {
         // Just refresh user data and stay on settings

@@ -3,29 +3,26 @@
  * Handles SAFE signature verification for proposal sign-off
  */
 
-import Safe from "@safe-global/protocol-kit";
-import SafeApiKit from "@safe-global/api-kit";
-import { type Address, keccak256, encodePacked, toBytes } from "viem";
+import SafeApiKitModule from "@safe-global/api-kit";
+import { type Address, keccak256, encodePacked, toBytes, encodeAbiParameters, concat, hashMessage } from "viem";
 import { env } from "./env.js";
 
-// SAFE Transaction Service URLs by chain ID
-const SAFE_TX_SERVICE_URLS: Record<number, string> = {
-  8453: "https://safe-transaction-base.safe.global", // Base Mainnet
-  84532: "https://safe-transaction-base-sepolia.safe.global", // Base Sepolia
-};
+// Safe EIP-712 type hashes
+const DOMAIN_SEPARATOR_TYPEHASH = keccak256(
+  toBytes("EIP712Domain(uint256 chainId,address verifyingContract)")
+);
+const SAFE_MSG_TYPEHASH = keccak256(toBytes("SafeMessage(bytes message)"));
+
+// Handle ESM default export compatibility
+const SafeApiKit = (SafeApiKitModule as unknown as { default: typeof SafeApiKitModule }).default || SafeApiKitModule;
 
 /**
  * Get the SAFE API Kit for the current chain
+ * The SDK automatically uses the correct Transaction Service URL for supported chains
  */
-export function getSafeApiKit(): SafeApiKit {
-  const txServiceUrl = SAFE_TX_SERVICE_URLS[env.CHAIN_ID];
-  if (!txServiceUrl) {
-    throw new Error(`No SAFE Transaction Service URL for chain ${env.CHAIN_ID}`);
-  }
-
+export function getSafeApiKit() {
   return new SafeApiKit({
     chainId: BigInt(env.CHAIN_ID),
-    txServiceUrl,
   });
 }
 
@@ -151,13 +148,62 @@ export function getSafeSignUrl(safeAddress: string, messageHash: string): string
 }
 
 /**
+ * Compute the Safe message hash that needs to be signed
+ *
+ * This follows Safe's EIP-712 message signing flow:
+ * 1. Hash the original message with EIP-191 (personal_sign format)
+ * 2. Wrap in SafeMessage struct and hash with EIP-712 domain
+ *
+ * The user must sign this hash (as raw bytes) for Safe to accept the signature.
+ */
+export function computeSafeMessageHash(
+  safeAddress: string,
+  message: string
+): string {
+  // Step 1: Compute EIP-191 hash of the message (what personal_sign would hash)
+  // For a string message, this is keccak256("\x19Ethereum Signed Message:\n" + len + message)
+  const messageHash = hashMessage(message);
+
+  // Step 2: Compute the EIP-712 domain separator for this Safe
+  const domainSeparator = keccak256(
+    encodeAbiParameters(
+      [{ type: "bytes32" }, { type: "uint256" }, { type: "address" }],
+      [DOMAIN_SEPARATOR_TYPEHASH, BigInt(env.CHAIN_ID), safeAddress as Address]
+    )
+  );
+
+  // Step 3: Compute the SafeMessage struct hash
+  // SafeMessage(bytes message) where message is the EIP-191 hash
+  const safeMessageStructHash = keccak256(
+    encodeAbiParameters(
+      [{ type: "bytes32" }, { type: "bytes32" }],
+      [SAFE_MSG_TYPEHASH, messageHash as `0x${string}`]
+    )
+  );
+
+  // Step 4: Compute final EIP-712 hash: keccak256("\x19\x01" + domainSeparator + structHash)
+  const safeMessageHash = keccak256(
+    concat([
+      "0x1901" as `0x${string}`,
+      domainSeparator as `0x${string}`,
+      safeMessageStructHash as `0x${string}`,
+    ])
+  );
+
+  return safeMessageHash;
+}
+
+/**
  * Propose a message to SAFE for signing
  * This creates a message proposal that SAFE owners can sign
+ *
+ * IMPORTANT: The signature must be from a SAFE owner. If the signer
+ * is not a SAFE owner, this will fail with "Signer is not an owner".
  */
 export async function proposeMessageToSafe(
   safeAddress: string,
   messageHash: string,
-  proposerAddress: string
+  signature: string
 ): Promise<{
   success: boolean;
   error?: string;
@@ -165,11 +211,11 @@ export async function proposeMessageToSafe(
   try {
     const apiKit = getSafeApiKit();
 
-    // The SAFE API Kit expects the message to be proposed
-    // This will appear in the SAFE app for signing
+    // The SAFE API Kit expects the message with a valid signature from an owner
+    // This will appear in the SAFE app for signing by other owners
     await apiKit.addMessage(safeAddress, {
       message: messageHash,
-      signature: "0x", // Empty signature - will be filled by owners
+      signature: signature,
     });
 
     console.log(`[SAFE] Message proposed to SAFE: ${messageHash}`);
@@ -177,9 +223,21 @@ export async function proposeMessageToSafe(
     return { success: true };
   } catch (error) {
     console.error("[SAFE] Error proposing message to SAFE:", error);
+
+    // Provide more helpful error messages
+    const errorMessage = error instanceof Error ? error.message : "Failed to propose message";
+
+    // Common error: signer is not a SAFE owner
+    if (errorMessage.includes("Signer") || errorMessage.includes("owner")) {
+      return {
+        success: false,
+        error: "The signing wallet is not a SAFE owner. Please ensure the manager's wallet is added as an owner on the SAFE.",
+      };
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to propose message",
+      error: errorMessage,
     };
   }
 }
@@ -191,7 +249,7 @@ export async function proposeMessageToSafe(
 export async function verifySafeSignatureOnChain(
   safeAddress: Address,
   messageHash: string,
-  rpcUrl: string
+  _rpcUrl: string // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<boolean> {
   try {
     // This would use the SAFE contract's isValidSignature method

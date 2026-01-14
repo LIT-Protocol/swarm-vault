@@ -11,10 +11,12 @@ import {
   hashActionData,
   checkSafeMessageSignature,
   getSafeSignUrl,
+  proposeMessageToSafe,
+  computeSafeMessageHash,
 } from "../lib/safe.js";
 import { executeSwapTransaction } from "../lib/swapExecutor.js";
 import { executeSwarmTransaction } from "../lib/transactionExecutor.js";
-import { getSwapExecuteDataForWallets, isNativeToken, type SwapExecuteData } from "../lib/zeroEx.js";
+import { getSwapExecuteDataForWallets, isNativeToken } from "../lib/zeroEx.js";
 import { getEthBalance, getTokenBalance } from "../lib/alchemy.js";
 import { type Address } from "viem";
 import { v4 as uuidv4 } from "uuid";
@@ -119,10 +121,17 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
       },
     });
 
-    // Generate SAFE signing URL
+    // Generate SAFE signing URL (will only work after the message is proposed)
     const signUrl = getSafeSignUrl(swarm.safeAddress!, safeMessageHash);
 
+    // Compute the Safe-specific message hash that needs to be signed
+    // This is the EIP-712 hash that Safe expects signatures for
+    const safeSigningHash = computeSafeMessageHash(swarm.safeAddress!, safeMessageHash);
+
     console.log(`[Proposals] Created proposal ${proposal.id} for swarm ${swarmId}`);
+    console.log(`[Proposals] Message hash: ${safeMessageHash}`);
+    console.log(`[Proposals] Safe signing hash: ${safeSigningHash}`);
+    console.log(`[Proposals] Manager must sign the safeSigningHash (as raw bytes) and call /api/proposals/${proposal.id}/propose-to-safe`);
 
     res.status(201).json({
       success: true,
@@ -131,6 +140,7 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
         actionType: proposal.actionType,
         actionData: proposal.actionData,
         safeMessageHash: proposal.safeMessageHash,
+        safeSigningHash, // The hash the user needs to sign (as raw bytes)
         status: proposal.status,
         proposedAt: proposal.proposedAt,
         expiresAt: proposal.expiresAt,
@@ -172,12 +182,15 @@ router.get("/swarms/:id/proposals", authMiddleware, async (req: Request, res: Re
       orderBy: { proposedAt: "desc" },
     });
 
-    // Generate sign URLs for pending proposals
+    // Generate sign URLs and signing hashes for pending proposals
     const result = proposals.map((p) => ({
       id: p.id,
       actionType: p.actionType,
       actionData: p.actionData,
       safeMessageHash: p.safeMessageHash,
+      safeSigningHash: p.status === "PROPOSED" && swarm.safeAddress
+        ? computeSafeMessageHash(swarm.safeAddress, p.safeMessageHash)
+        : undefined,
       status: p.status,
       proposedAt: p.proposedAt,
       approvedAt: p.approvedAt,
@@ -681,6 +694,111 @@ router.post("/proposals/:id/cancel", authMiddleware, async (req: Request, res: R
     res.status(500).json({
       success: false,
       error: "Failed to cancel proposal",
+      errorCode: ErrorCode.INTERNAL_ERROR,
+    });
+  }
+});
+
+// POST /api/proposals/:id/propose-to-safe - Submit signature to propose message to SAFE
+router.post("/proposals/:id/propose-to-safe", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { signature } = req.body;
+    const userId = req.user!.userId;
+
+    if (!signature || typeof signature !== "string") {
+      res.status(400).json({
+        success: false,
+        error: "Signature is required",
+        errorCode: ErrorCode.VALIDATION_ERROR,
+      });
+      return;
+    }
+
+    const proposal = await prisma.proposedAction.findUnique({
+      where: { id },
+      include: {
+        swarm: {
+          include: { managers: true },
+        },
+      },
+    });
+
+    if (!proposal) {
+      res.status(404).json({
+        success: false,
+        error: "Proposal not found",
+        errorCode: ErrorCode.PROPOSAL_NOT_FOUND,
+      });
+      return;
+    }
+
+    // Verify manager access
+    const isManager = proposal.swarm.managers.some((m) => m.userId === userId);
+    if (!isManager) {
+      res.status(403).json({
+        success: false,
+        error: "Not a manager of this swarm",
+        errorCode: ErrorCode.NOT_MANAGER,
+      });
+      return;
+    }
+
+    // Can only propose PROPOSED status proposals
+    if (proposal.status !== "PROPOSED") {
+      res.status(400).json({
+        success: false,
+        error: `Cannot propose to SAFE with status: ${proposal.status}`,
+        errorCode: ErrorCode.VALIDATION_ERROR,
+      });
+      return;
+    }
+
+    // Check if SAFE is configured
+    if (!proposal.swarm.safeAddress) {
+      res.status(400).json({
+        success: false,
+        error: "No SAFE configured for this swarm",
+        errorCode: ErrorCode.SAFE_NOT_CONFIGURED,
+      });
+      return;
+    }
+
+    // Propose the message to SAFE Transaction Service with the signature
+    const proposeResult = await proposeMessageToSafe(
+      proposal.swarm.safeAddress,
+      proposal.safeMessageHash,
+      signature
+    );
+
+    if (!proposeResult.success) {
+      res.status(400).json({
+        success: false,
+        error: proposeResult.error || "Failed to propose message to SAFE",
+        errorCode: ErrorCode.SAFE_ERROR,
+      });
+      return;
+    }
+
+    // Generate SAFE signing URL
+    const signUrl = getSafeSignUrl(proposal.swarm.safeAddress, proposal.safeMessageHash);
+
+    console.log(`[Proposals] Successfully proposed message to SAFE for proposal ${id}`);
+
+    res.json({
+      success: true,
+      data: {
+        id: proposal.id,
+        safeMessageHash: proposal.safeMessageHash,
+        signUrl,
+        message: "Message successfully proposed to SAFE. Other owners can now sign.",
+      },
+    });
+  } catch (error) {
+    console.error("Failed to propose to SAFE:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to propose to SAFE",
       errorCode: ErrorCode.INTERNAL_ERROR,
     });
   }
