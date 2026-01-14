@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { getTokensForChain, type TokenInfo } from "@swarm-vault/shared";
 import { formatUnits } from "viem";
 import { signSafeMessage } from "../lib/safeMessage";
+import { EIP712TypedData } from "@safe-global/types-kit";
 
 interface SwapFormProps {
   swarmId: string;
@@ -69,7 +70,7 @@ const chainId = parseInt(import.meta.env.VITE_CHAIN_ID || "84532");
 interface ProposalResult {
   id: string;
   actionType: string;
-  safeMessageHash: string; // Raw message string for signing
+  safeMessageHash: unknown; // EIP-712 typed data object for signing
   status: string;
   signUrl?: string;
 }
@@ -82,8 +83,12 @@ export default function SwapForm({
   requiresSafeSignoff = false,
   safeAddress,
 }: SwapFormProps) {
-  const [step, setStep] = useState<"form" | "preview" | "executing" | "done">("form");
-  const [proposalResult, setProposalResult] = useState<ProposalResult | null>(null);
+  const [step, setStep] = useState<"form" | "preview" | "executing" | "done">(
+    "form"
+  );
+  const [proposalResult, setProposalResult] = useState<ProposalResult | null>(
+    null
+  );
   const [holdings, setHoldings] = useState<HoldingsData | null>(null);
   const [isLoadingHoldings, setIsLoadingHoldings] = useState(false);
   const [preview, setPreview] = useState<SwapPreviewData | null>(null);
@@ -119,7 +124,9 @@ export default function SwapForm({
     try {
       setIsLoadingHoldings(true);
       setError(null);
-      const data = await api.get<HoldingsData>(`/api/swarms/${swarmId}/holdings`);
+      const data = await api.get<HoldingsData>(
+        `/api/swarms/${swarmId}/holdings`
+      );
       setHoldings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch holdings");
@@ -190,13 +197,17 @@ export default function SwapForm({
         // Step 2: Sign using Safe Protocol Kit's signMessage method
         // This uses ETH_SIGN_TYPED_DATA_V4 which handles all the EIP-712 signing correctly
         try {
+          console.log("result from api", result);
           console.log("[SwapForm] Signing with Safe Protocol Kit...");
           console.log("[SwapForm] Safe address:", safeAddress);
-          console.log("[SwapForm] Message (proposal hash):", result.safeMessageHash);
+          console.log(
+            "[SwapForm] Message (proposal hash):",
+            result.safeMessageHash
+          );
 
           const signature = await signSafeMessage(
             safeAddress,
-            result.safeMessageHash
+            result.safeMessageHash as EIP712TypedData
           );
 
           console.log("[SwapForm] Signature:", signature);
@@ -239,7 +250,13 @@ export default function SwapForm({
         onSubmitted();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : requiresSafeSignoff ? "Failed to create proposal" : "Failed to execute swap");
+      setError(
+        err instanceof Error
+          ? err.message
+          : requiresSafeSignoff
+          ? "Failed to create proposal"
+          : "Failed to execute swap"
+      );
       setStep("preview");
     } finally {
       setIsExecuting(false);
@@ -249,7 +266,9 @@ export default function SwapForm({
   const getTokenDisplay = (address: string) => {
     // Check holdings first
     if (holdings) {
-      if (address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+      if (
+        address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ) {
         return { symbol: "ETH", name: "Ethereum", decimals: 18 };
       }
       const token = holdings.tokens.find(
@@ -286,17 +305,32 @@ export default function SwapForm({
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="text-lg font-semibold text-gray-900">
-              {step === "form" && (requiresSafeSignoff ? "New Swap Proposal" : "New Swap")}
+              {step === "form" &&
+                (requiresSafeSignoff ? "New Swap Proposal" : "New Swap")}
               {step === "preview" && "Preview Swap"}
-              {step === "executing" && (requiresSafeSignoff ? "Creating Proposal..." : "Executing Swap...")}
-              {step === "done" && (requiresSafeSignoff ? "Proposal Created" : "Swap Submitted")}
+              {step === "executing" &&
+                (requiresSafeSignoff
+                  ? "Creating Proposal..."
+                  : "Executing Swap...")}
+              {step === "done" &&
+                (requiresSafeSignoff ? "Proposal Created" : "Swap Submitted")}
             </h3>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -335,22 +369,30 @@ export default function SwapForm({
                     )}
                     {holdings?.tokens.map((token) => (
                       <option key={token.address} value={token.address}>
-                        {token.symbol} ({formatAmount(token.totalBalance, token.decimals)} total)
+                        {token.symbol} (
+                        {formatAmount(token.totalBalance, token.decimals)}{" "}
+                        total)
                       </option>
                     ))}
                     {/* Separator if we have holdings */}
-                    {holdings && (holdings.tokens.length > 0 || BigInt(holdings.ethBalance) > 0n) && (
-                      <option disabled>──────────</option>
-                    )}
+                    {holdings &&
+                      (holdings.tokens.length > 0 ||
+                        BigInt(holdings.ethBalance) > 0n) && (
+                        <option disabled>──────────</option>
+                      )}
                     {/* Common tokens not in holdings */}
                     {commonTokens
                       .filter((t) => {
                         if (!holdings) return true;
-                        if (t.address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+                        if (
+                          t.address.toLowerCase() ===
+                          "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        ) {
                           return BigInt(holdings.ethBalance) === 0n;
                         }
                         return !holdings.tokens.some(
-                          (h) => h.address.toLowerCase() === t.address.toLowerCase()
+                          (h) =>
+                            h.address.toLowerCase() === t.address.toLowerCase()
                         );
                       })
                       .map((token) => (
@@ -390,7 +432,9 @@ export default function SwapForm({
                     min="1"
                     max="100"
                     value={sellPercentage}
-                    onChange={(e) => setSellPercentage(parseInt(e.target.value))}
+                    onChange={(e) =>
+                      setSellPercentage(parseInt(e.target.value))
+                    }
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -428,7 +472,9 @@ export default function SwapForm({
                       max="50"
                       step="0.1"
                       value={slippagePercentage}
-                      onChange={(e) => setSlippagePercentage(parseFloat(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setSlippagePercentage(parseFloat(e.target.value) || 1)
+                      }
                       className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -439,8 +485,10 @@ export default function SwapForm({
                   <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
                     <p>
                       This swap will be executed for{" "}
-                      <span className="font-semibold">{holdings.memberCount}</span> active
-                      member{holdings.memberCount !== 1 ? "s" : ""}.
+                      <span className="font-semibold">
+                        {holdings.memberCount}
+                      </span>{" "}
+                      active member{holdings.memberCount !== 1 ? "s" : ""}.
                     </p>
                   </div>
                 )}
@@ -477,8 +525,18 @@ export default function SwapForm({
                       </p>
                     </div>
                     <div className="px-4">
-                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      <svg
+                        className="w-6 h-6 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 8l4 4m0 0l-4 4m4-4H3"
+                        />
                       </svg>
                     </div>
                     <div className="text-center flex-1">
@@ -495,7 +553,9 @@ export default function SwapForm({
                   <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-sm text-gray-600">
                     <span>{preview.successCount} wallets will swap</span>
                     {preview.errorCount > 0 && (
-                      <span className="text-amber-600">{preview.errorCount} wallets skipped</span>
+                      <span className="text-amber-600">
+                        {preview.errorCount} wallets skipped
+                      </span>
                     )}
                   </div>
                 </div>
@@ -504,15 +564,29 @@ export default function SwapForm({
                 {preview.fee && BigInt(preview.totalFeeAmount) > 0n && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-amber-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
-                      <h4 className="text-sm font-medium text-amber-800">Platform Fee</h4>
+                      <h4 className="text-sm font-medium text-amber-800">
+                        Platform Fee
+                      </h4>
                     </div>
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between text-amber-700">
                         <span>Fee rate:</span>
-                        <span className="font-medium">{preview.fee.percentage}</span>
+                        <span className="font-medium">
+                          {preview.fee.percentage}
+                        </span>
                       </div>
                       <div className="flex justify-between text-amber-700">
                         <span>Total fee:</span>
@@ -632,14 +706,38 @@ export default function SwapForm({
               </div>
             ) : step === "done" ? (
               <div className="text-center py-8">
-                <div className={`w-16 h-16 ${proposalResult ? "bg-yellow-100" : "bg-green-100"} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                <div
+                  className={`w-16 h-16 ${
+                    proposalResult ? "bg-yellow-100" : "bg-green-100"
+                  } rounded-full flex items-center justify-center mx-auto mb-4`}
+                >
                   {proposalResult ? (
-                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-8 h-8 text-yellow-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   ) : (
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-8 h-8 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   )}
                 </div>
@@ -663,8 +761,18 @@ export default function SwapForm({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
                         </svg>
                         Sign in SAFE
                       </a>

@@ -20,6 +20,7 @@
     "@prisma/client": "^5.8.0",
     "@safe-global/api-kit": "^4.0.1",
     "@safe-global/protocol-kit": "^6.1.2",
+    "@safe-global/types-kit": "^3.0.0",
     "@swarm-vault/shared": "workspace:*",
     "@zerodev/ecdsa-validator": "^5.4.9",
     "@zerodev/permissions": "^5.4.9",

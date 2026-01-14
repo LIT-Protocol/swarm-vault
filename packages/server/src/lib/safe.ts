@@ -7,9 +7,34 @@ import SafeApiKitModule from "@safe-global/api-kit";
 import { hashSafeMessage } from "@safe-global/protocol-kit";
 import { type Address, keccak256, toBytes } from "viem";
 import { env } from "./env.js";
+import { EIP712TypedData } from "@safe-global/types-kit";
 
 // Handle ESM default export compatibility
-const SafeApiKit = (SafeApiKitModule as unknown as { default: typeof SafeApiKitModule }).default || SafeApiKitModule;
+const SafeApiKit =
+  (SafeApiKitModule as unknown as { default: typeof SafeApiKitModule })
+    .default || SafeApiKitModule;
+
+/**
+ * EIP-712 domain for SwarmVault proposals
+ */
+export const SWARM_VAULT_DOMAIN = {
+  name: "SwarmVault",
+  version: "1",
+  chainId: env.CHAIN_ID,
+} as const;
+
+/**
+ * EIP-712 types for proposal approval
+ */
+export const PROPOSAL_APPROVAL_TYPES = {
+  ProposalApproval: [
+    { name: "swarmId", type: "string" },
+    { name: "proposalId", type: "string" },
+    { name: "actionType", type: "string" },
+    { name: "actionDataHash", type: "bytes32" },
+    { name: "expiresAt", type: "uint256" },
+  ],
+} as const;
 
 /**
  * Get the SAFE API Kit for the current chain
@@ -18,7 +43,9 @@ const SafeApiKit = (SafeApiKitModule as unknown as { default: typeof SafeApiKitM
  */
 export function getSafeApiKit() {
   if (!env.SAFE_API_KEY) {
-    throw new Error("SAFE_API_KEY is required. Get your API key at https://developer.safe.global");
+    throw new Error(
+      "SAFE_API_KEY is required. Get your API key at https://developer.safe.global"
+    );
   }
 
   return new SafeApiKit({
@@ -28,31 +55,78 @@ export function getSafeApiKit() {
 }
 
 /**
- * Create the raw message string for a proposal
+ * Create the EIP-712 typed data for a proposal
  * This is the message that will be signed by SAFE owners
  *
- * IMPORTANT: This returns a raw string (not hashed) because the Safe Protocol Kit
- * will handle all the hashing internally when signing.
+ * The Safe Protocol Kit will use this typed data structure directly,
+ * allowing wallets to display a human-readable, structured message.
  */
 export function createProposalMessage(
   swarmId: string,
   proposalId: string,
   actionType: string,
   actionDataHash: string,
-  expiresAt: Date
-): string {
-  // Create a human-readable message that includes all proposal details
-  // The Safe SDK will hash this message according to EIP-191/EIP-712
+  expiresAt: Date,
+  verifyingContract: string
+): EIP712TypedData {
   const expiresAtUnix = Math.floor(expiresAt.getTime() / 1000);
-  return `SwarmVault Proposal Approval\n\nSwarm: ${swarmId}\nProposal: ${proposalId}\nAction: ${actionType}\nData Hash: ${actionDataHash}\nExpires: ${expiresAtUnix}`;
+
+  return {
+    domain: {
+      name: SWARM_VAULT_DOMAIN.name,
+      version: SWARM_VAULT_DOMAIN.version,
+      chainId: SWARM_VAULT_DOMAIN.chainId,
+      verifyingContract,
+    },
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      ProposalApproval: [
+        { name: "swarmId", type: "string" },
+        { name: "proposalId", type: "string" },
+        { name: "actionType", type: "string" },
+        { name: "actionDataHash", type: "bytes32" },
+        { name: "expiresAt", type: "uint256" },
+      ],
+    },
+    primaryType: "ProposalApproval",
+    message: {
+      swarmId,
+      proposalId,
+      actionType,
+      actionDataHash,
+      expiresAt: expiresAtUnix,
+    },
+  };
 }
 
 /**
  * Hash action data for inclusion in the message hash
  */
 export function hashActionData(actionData: unknown): string {
-  const jsonStr = JSON.stringify(actionData, Object.keys(actionData as object).sort());
+  const jsonStr = JSON.stringify(
+    actionData,
+    Object.keys(actionData as object).sort()
+  );
   return keccak256(toBytes(jsonStr));
+}
+
+/**
+ * Serialize EIP712TypedData to JSON for storage
+ */
+export function serializeTypedData(typedData: EIP712TypedData): string {
+  return JSON.stringify(typedData);
+}
+
+/**
+ * Deserialize EIP712TypedData from JSON storage
+ */
+export function deserializeTypedData(json: string): EIP712TypedData {
+  return JSON.parse(json) as EIP712TypedData;
 }
 
 /**
@@ -87,11 +161,11 @@ export async function validateSafeAddress(safeAddress: string): Promise<{
  * Uses the SAFE Transaction Service to check for off-chain signatures
  *
  * @param safeAddress - The Safe address
- * @param message - The raw message string (will be hashed for lookup)
+ * @param message - The EIP712TypedData or raw message string (will be hashed for lookup)
  */
 export async function checkSafeMessageSignature(
   safeAddress: string,
-  message: string
+  message: string | EIP712TypedData
 ): Promise<{
   signed: boolean;
   confirmations?: number;
@@ -102,6 +176,7 @@ export async function checkSafeMessageSignature(
     const apiKit = getSafeApiKit();
 
     // Hash the message to get the Safe message hash for lookup
+    // hashSafeMessage handles both string and EIP712TypedData
     const messageHash = hashSafeMessage(message);
 
     // Try to get the message from SAFE Transaction Service
@@ -118,7 +193,7 @@ export async function checkSafeMessageSignature(
       signed,
       confirmations,
       threshold,
-      signatures: safeMessage.confirmations?.map(c => c.signature) || [],
+      signatures: safeMessage.confirmations?.map((c) => c.signature) || [],
     };
   } catch (error) {
     // If message not found, it hasn't been signed yet
@@ -141,11 +216,15 @@ export async function checkSafeMessageSignature(
  * Get the URL to sign a message in the SAFE app
  *
  * @param safeAddress - The Safe address
- * @param message - The raw message string (will be hashed for the URL)
+ * @param message - The EIP712TypedData or raw message string (will be hashed for the URL)
  */
-export function getSafeSignUrl(safeAddress: string, message: string): string {
+export function getSafeSignUrl(
+  safeAddress: string,
+  message: string | EIP712TypedData
+): string {
   const chainPrefix = env.CHAIN_ID === 8453 ? "base" : "basesep";
-  // Safe app expects the EIP-191 hash of the message in the URL
+  // Safe app expects the hash of the message in the URL
+  // hashSafeMessage handles both string and EIP712TypedData
   const messageHash = hashSafeMessage(message);
   return `https://app.safe.global/transactions/msg?safe=${chainPrefix}:${safeAddress}&messageHash=${messageHash}`;
 }
@@ -156,10 +235,14 @@ export function getSafeSignUrl(safeAddress: string, message: string): string {
  *
  * IMPORTANT: The signature must be from a SAFE owner. If the signer
  * is not a SAFE owner, this will fail with "Signer is not an owner".
+ *
+ * @param safeAddress - The Safe address
+ * @param message - The EIP712TypedData or raw message string
+ * @param signature - The signature from a SAFE owner
  */
 export async function proposeMessageToSafe(
   safeAddress: string,
-  messageHash: string,
+  message: string | EIP712TypedData,
   signature: string
 ): Promise<{
   success: boolean;
@@ -170,11 +253,13 @@ export async function proposeMessageToSafe(
 
     // The SAFE API Kit expects the message with a valid signature from an owner
     // This will appear in the SAFE app for signing by other owners
+    // For EIP712TypedData, the API Kit handles it directly
     await apiKit.addMessage(safeAddress, {
-      message: messageHash,
+      message: message,
       signature: signature,
     });
 
+    const messageHash = hashSafeMessage(message);
     console.log(`[SAFE] Message proposed to SAFE: ${messageHash}`);
 
     return { success: true };
@@ -182,13 +267,15 @@ export async function proposeMessageToSafe(
     console.error("[SAFE] Error proposing message to SAFE:", error);
 
     // Provide more helpful error messages
-    const errorMessage = error instanceof Error ? error.message : "Failed to propose message";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to propose message";
 
     // Common error: signer is not a SAFE owner
     if (errorMessage.includes("Signer") || errorMessage.includes("owner")) {
       return {
         success: false,
-        error: "The signing wallet is not a SAFE owner. Please ensure the manager's wallet is added as an owner on the SAFE.",
+        error:
+          "The signing wallet is not a SAFE owner. Please ensure the manager's wallet is added as an owner on the SAFE.",
       };
     }
 
@@ -204,17 +291,19 @@ export async function proposeMessageToSafe(
  * This is used if the Transaction Service is unavailable
  *
  * @param safeAddress - The Safe address
- * @param message - The raw message string
+ * @param message - The EIP712TypedData or raw message string
  */
 export async function verifySafeSignatureOnChain(
   safeAddress: Address,
-  message: string,
+  message: string | EIP712TypedData,
   _rpcUrl: string // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<boolean> {
   try {
     // This would use the SAFE contract's isValidSignature method
     // For now, we rely on the Transaction Service
-    console.warn("[SAFE] On-chain verification not implemented, using Transaction Service");
+    console.warn(
+      "[SAFE] On-chain verification not implemented, using Transaction Service"
+    );
 
     const result = await checkSafeMessageSignature(safeAddress, message);
     return result.signed;

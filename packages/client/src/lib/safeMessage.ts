@@ -4,56 +4,58 @@
  */
 
 import Safe, { SigningMethod } from "@safe-global/protocol-kit";
-
-// EIP-1193 provider interface
-interface Eip1193Provider {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-}
+import { EIP712TypedData } from "@safe-global/types-kit";
 
 /**
  * Sign a message for a Safe using the Safe Protocol Kit
  *
  * This uses Safe's official signMessage method which handles all the
- * EIP-712 signing correctly. The message should be a raw string - the
+ * EIP-712 signing correctly. The message should be a EIP712TypedData object - the
  * Safe Protocol Kit will hash it internally.
  *
  * @param safeAddress - The Safe address
- * @param message - The raw message string (NOT pre-hashed)
+ * @param message - The EIP712TypedData object (may contain serialized BigInt markers)
  * @returns The signature
  */
 export async function signSafeMessage(
   safeAddress: string,
-  message: string
+  message: EIP712TypedData
 ): Promise<string> {
   console.log("[safeMessage] Initializing Protocol Kit with signer...");
   console.log("[safeMessage] Safe address:", safeAddress);
-  console.log("[safeMessage] Message:", message);
+  console.log("[safeMessage] Raw message from API:", message);
 
   // Use window.ethereum as the provider
-  const provider = (window as unknown as { ethereum?: Eip1193Provider }).ethereum;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provider = (window as any).ethereum;
 
   if (!provider) {
-    throw new Error("No wallet provider found. Please install a wallet like MetaMask.");
+    throw new Error(
+      "No wallet provider found. Please install a wallet like MetaMask."
+    );
   }
 
   // Initialize Protocol Kit with the user's wallet as signer
   const protocolKit = await Safe.init({
-    provider: provider,
+    provider,
     safeAddress: safeAddress,
   });
 
-  // Create the Safe message
+  // Create the Safe message from EIP-712 typed data
   const safeMessage = protocolKit.createMessage(message);
-  console.log("[safeMessage] Created Safe message");
+  console.log(
+    "[safeMessage] Created Safe message from EIP-712 typed data",
+    safeMessage
+  );
 
   // Sign the message using ETH_SIGN_TYPED_DATA_V4
-  // This is the recommended method for off-chain message signing
+  // This will show a structured, human-readable message in the user's wallet
   const signedMessage = await protocolKit.signMessage(
     safeMessage,
     SigningMethod.ETH_SIGN_TYPED_DATA_V4
   );
 
-  console.log("[safeMessage] Message signed successfully");
+  console.log("[safeMessage] Message signed successfully", signedMessage);
 
   // Get the signature from the signed message
   // The signatures are stored in a Map, get the first one (the user's signature)

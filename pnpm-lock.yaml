@@ -26,6 +26,9 @@ importers:
       '@safe-global/protocol-kit':
         specifier: ^5.1.0
         version: 5.2.22(typescript@5.9.3)
+      '@safe-global/types-kit':
+        specifier: ^3.0.0
+        version: 3.0.0(typescript@5.9.3)
       '@swarm-vault/shared':
         specifier: workspace:*
         version: link:../shared
@@ -129,6 +132,9 @@ importers:
       '@safe-global/protocol-kit':
         specifier: ^6.1.2
         version: 6.1.2(typescript@5.9.3)(zod@3.25.76)
+      '@safe-global/types-kit':
+        specifier: ^3.0.0
+        version: 3.0.0(typescript@5.9.3)(zod@3.25.76)
       '@swarm-vault/shared':
         specifier: workspace:*
         version: link:../shared
@@ -3244,6 +3250,15 @@ packages:
       - zod
     dev: false
 
+  /@safe-global/types-kit@3.0.0(typescript@5.9.3):
+    resolution: {integrity: sha512-AZWIlR5MguDPdGiOj7BB4JQPY2afqmWQww1mu8m8Oi16HHBW99G01kFOu4NEHBwEU1cgwWOMY19hsI5KyL4W2w==}
+    dependencies:
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.3.5)
+    transitivePeerDependencies:
+      - typescript
+      - zod
+    dev: false
+
   /@safe-global/types-kit@3.0.0(typescript@5.9.3)(zod@3.25.76):
     resolution: {integrity: sha512-AZWIlR5MguDPdGiOj7BB4JQPY2afqmWQww1mu8m8Oi16HHBW99G01kFOu4NEHBwEU1cgwWOMY19hsI5KyL4W2w==}
     dependencies:
@@ -5334,7 +5349,7 @@ packages:
       viem: ^2.28.0
     dependencies:
       '@zerodev/sdk': 5.5.7(viem@2.43.5)
-      viem: 2.43.5(typescript@5.9.3)
+      viem: 2.43.5(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /@zerodev/permissions@5.6.3(@zerodev/sdk@5.5.7)(@zerodev/webauthn-key@5.5.0)(viem@2.43.5):
@@ -5348,7 +5363,7 @@ packages:
       '@zerodev/sdk': 5.5.7(viem@2.43.5)
       '@zerodev/webauthn-key': 5.5.0(viem@2.43.5)
       merkletreejs: 0.3.11
-      viem: 2.43.5(typescript@5.9.3)
+      viem: 2.43.5(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /@zerodev/sdk@5.5.7(viem@2.43.5):
@@ -5357,7 +5372,7 @@ packages:
       viem: ^2.28.0
     dependencies:
       semver: 7.7.3
-      viem: 2.43.5(typescript@5.9.3)
+      viem: 2.43.5(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /@zerodev/webauthn-key@5.5.0(viem@2.43.5):
@@ -5368,7 +5383,7 @@ packages:
       '@noble/curves': 1.9.7
       '@simplewebauthn/browser': 8.3.7
       '@simplewebauthn/types': 12.0.0
-      viem: 2.43.5(typescript@5.9.3)
+      viem: 2.43.5(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /abitype@1.0.6(typescript@5.9.3)(zod@3.25.76):
@@ -7862,7 +7877,7 @@ packages:
       ox:
         optional: true
     dependencies:
-      viem: 2.43.5(typescript@5.9.3)
+      viem: 2.43.5(typescript@5.9.3)(zod@3.25.76)
     dev: false
 
   /picocolors@1.1.1:

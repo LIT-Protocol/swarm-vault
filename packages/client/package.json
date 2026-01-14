@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@safe-global/protocol-kit": "^5.1.0",
+    "@safe-global/types-kit": "^3.0.0",
     "@swarm-vault/shared": "workspace:*",
     "@tanstack/react-query": "^5.17.0",
     "@zerodev/ecdsa-validator": "^5.4.9",
