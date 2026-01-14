@@ -126,7 +126,7 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
 
     // Compute the Safe-specific message hash that needs to be signed
     // This is the EIP-712 hash that Safe expects signatures for
-    const safeSigningHash = computeSafeMessageHash(swarm.safeAddress!, safeMessageHash);
+    const safeSigningHash = await computeSafeMessageHash(swarm.safeAddress!, safeMessageHash);
 
     console.log(`[Proposals] Created proposal ${proposal.id} for swarm ${swarmId}`);
     console.log(`[Proposals] Message hash: ${safeMessageHash}`);
@@ -183,24 +183,26 @@ router.get("/swarms/:id/proposals", authMiddleware, async (req: Request, res: Re
     });
 
     // Generate sign URLs and signing hashes for pending proposals
-    const result = proposals.map((p) => ({
-      id: p.id,
-      actionType: p.actionType,
-      actionData: p.actionData,
-      safeMessageHash: p.safeMessageHash,
-      safeSigningHash: p.status === "PROPOSED" && swarm.safeAddress
-        ? computeSafeMessageHash(swarm.safeAddress, p.safeMessageHash)
-        : undefined,
-      status: p.status,
-      proposedAt: p.proposedAt,
-      approvedAt: p.approvedAt,
-      executedAt: p.executedAt,
-      expiresAt: p.expiresAt,
-      executionTxId: p.executionTxId,
-      signUrl: p.status === "PROPOSED" && swarm.safeAddress
-        ? getSafeSignUrl(swarm.safeAddress, p.safeMessageHash)
-        : undefined,
-    }));
+    const result = await Promise.all(
+      proposals.map(async (p) => ({
+        id: p.id,
+        actionType: p.actionType,
+        actionData: p.actionData,
+        safeMessageHash: p.safeMessageHash,
+        safeSigningHash: p.status === "PROPOSED" && swarm.safeAddress
+          ? await computeSafeMessageHash(swarm.safeAddress, p.safeMessageHash)
+          : undefined,
+        status: p.status,
+        proposedAt: p.proposedAt,
+        approvedAt: p.approvedAt,
+        executedAt: p.executedAt,
+        expiresAt: p.expiresAt,
+        executionTxId: p.executionTxId,
+        signUrl: p.status === "PROPOSED" && swarm.safeAddress
+          ? getSafeSignUrl(swarm.safeAddress, p.safeMessageHash)
+          : undefined,
+      }))
+    );
 
     res.json({
       success: true,

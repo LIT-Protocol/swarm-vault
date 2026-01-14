@@ -4,14 +4,9 @@
  */
 
 import SafeApiKitModule from "@safe-global/api-kit";
-import { type Address, keccak256, encodePacked, toBytes, encodeAbiParameters, concat, hashMessage } from "viem";
+import Safe, { hashSafeMessage } from "@safe-global/protocol-kit";
+import { type Address, keccak256, encodePacked, toBytes } from "viem";
 import { env } from "./env.js";
-
-// Safe EIP-712 type hashes
-const DOMAIN_SEPARATOR_TYPEHASH = keccak256(
-  toBytes("EIP712Domain(uint256 chainId,address verifyingContract)")
-);
-const SAFE_MSG_TYPEHASH = keccak256(toBytes("SafeMessage(bytes message)"));
 
 // Handle ESM default export compatibility
 const SafeApiKit = (SafeApiKitModule as unknown as { default: typeof SafeApiKitModule }).default || SafeApiKitModule;
@@ -19,10 +14,16 @@ const SafeApiKit = (SafeApiKitModule as unknown as { default: typeof SafeApiKitM
 /**
  * Get the SAFE API Kit for the current chain
  * The SDK automatically uses the correct Transaction Service URL for supported chains
+ * Requires SAFE_API_KEY environment variable
  */
 export function getSafeApiKit() {
+  if (!env.SAFE_API_KEY) {
+    throw new Error("SAFE_API_KEY is required. Get your API key at https://developer.safe.global");
+  }
+
   return new SafeApiKit({
     chainId: BigInt(env.CHAIN_ID),
+    apiKey: env.SAFE_API_KEY,
   });
 }
 
@@ -148,47 +149,44 @@ export function getSafeSignUrl(safeAddress: string, messageHash: string): string
 }
 
 /**
+ * Get the RPC URL for the current chain
+ */
+function getRpcUrl(): string {
+  // Use Alchemy RPC if available, otherwise use public RPC
+  const alchemyKey = process.env.ALCHEMY_API_KEY;
+  if (alchemyKey) {
+    const network = env.CHAIN_ID === 8453 ? "base-mainnet" : "base-sepolia";
+    return `https://${network}.g.alchemy.com/v2/${alchemyKey}`;
+  }
+  // Fallback to public RPC
+  return env.CHAIN_ID === 8453
+    ? "https://mainnet.base.org"
+    : "https://sepolia.base.org";
+}
+
+/**
  * Compute the Safe message hash that needs to be signed
  *
- * This follows Safe's EIP-712 message signing flow:
- * 1. Hash the original message with EIP-191 (personal_sign format)
- * 2. Wrap in SafeMessage struct and hash with EIP-712 domain
+ * Uses the Safe Protocol Kit to compute the correct EIP-712 hash
+ * that Safe expects for off-chain message signing.
  *
- * The user must sign this hash (as raw bytes) for Safe to accept the signature.
+ * The user must sign this hash (as raw bytes using eth_sign) for Safe to accept the signature.
  */
-export function computeSafeMessageHash(
+export async function computeSafeMessageHash(
   safeAddress: string,
   message: string
-): string {
-  // Step 1: Compute EIP-191 hash of the message (what personal_sign would hash)
-  // For a string message, this is keccak256("\x19Ethereum Signed Message:\n" + len + message)
-  const messageHash = hashMessage(message);
+): Promise<string> {
+  // Initialize Protocol Kit with the Safe address (read-only, no signer needed)
+  const protocolKit = await Safe.init({
+    provider: getRpcUrl(),
+    safeAddress: safeAddress,
+  });
 
-  // Step 2: Compute the EIP-712 domain separator for this Safe
-  const domainSeparator = keccak256(
-    encodeAbiParameters(
-      [{ type: "bytes32" }, { type: "uint256" }, { type: "address" }],
-      [DOMAIN_SEPARATOR_TYPEHASH, BigInt(env.CHAIN_ID), safeAddress as Address]
-    )
-  );
+  // Step 1: Hash the message using Safe's method (EIP-191 hash)
+  const messageHash = hashSafeMessage(message);
 
-  // Step 3: Compute the SafeMessage struct hash
-  // SafeMessage(bytes message) where message is the EIP-191 hash
-  const safeMessageStructHash = keccak256(
-    encodeAbiParameters(
-      [{ type: "bytes32" }, { type: "bytes32" }],
-      [SAFE_MSG_TYPEHASH, messageHash as `0x${string}`]
-    )
-  );
-
-  // Step 4: Compute final EIP-712 hash: keccak256("\x19\x01" + domainSeparator + structHash)
-  const safeMessageHash = keccak256(
-    concat([
-      "0x1901" as `0x${string}`,
-      domainSeparator as `0x${string}`,
-      safeMessageStructHash as `0x${string}`,
-    ])
-  );
+  // Step 2: Get the Safe-specific message hash (EIP-712 with domain separator)
+  const safeMessageHash = await protocolKit.getSafeMessageHash(messageHash);
 
   return safeMessageHash;
 }

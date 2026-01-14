@@ -18,6 +18,8 @@ const envSchema = z.object({
   // Swap Fee Collection
   SWAP_FEE_RECIPIENT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
   SWAP_FEE_BPS: z.coerce.number().min(0).max(1000).default(50), // Default 50 bps = 0.5%
+  // Safe Global API
+  SAFE_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
