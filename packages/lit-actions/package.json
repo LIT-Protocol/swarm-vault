@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/signTransaction.ts --bundle --outfile=dist/signTransaction.js --format=iife --platform=neutral",
+    "build": "pnpm build:sign && pnpm build:safe",
+    "build:sign": "esbuild src/signTransaction.ts --bundle --outfile=dist/signTransaction.js --format=iife --platform=neutral",
+    "build:safe": "esbuild src/signTransactionWithSafe.ts --bundle --outfile=dist/signTransactionWithSafe.js --format=iife --platform=neutral",
     "dev": "pnpm build --watch",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },

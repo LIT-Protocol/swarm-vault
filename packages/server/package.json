@@ -18,6 +18,8 @@
     "@lit-protocol/contracts-sdk": "^6.11.0",
     "@lit-protocol/lit-node-client": "^6.11.0",
     "@prisma/client": "^5.8.0",
+    "@safe-global/api-kit": "^2.5.6",
+    "@safe-global/protocol-kit": "^5.1.0",
     "@swarm-vault/shared": "workspace:*",
     "@zerodev/ecdsa-validator": "^5.4.9",
     "@zerodev/permissions": "^5.4.9",
@@ -30,6 +32,7 @@
     "morgan": "^1.10.0",
     "permissionless": "^0.3.2",
     "siwe": "^2.1.4",
+    "uuid": "^9.0.0",
     "viem": "^2.7.0",
     "zod": "^3.22.4"
   },
@@ -39,6 +42,7 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.6",
+    "@types/uuid": "^9.0.0",
     "prisma": "^5.8.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

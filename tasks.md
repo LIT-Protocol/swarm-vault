@@ -411,120 +411,108 @@
 
 ---
 
-## Phase 13: Gnosis SAFE Sign-Off for Manager Actions
+## Phase 13: Gnosis SAFE Sign-Off for Manager Actions [COMPLETED]
 
 ### 13.1 SAFE Configuration
-- [ ] Add SAFE integration fields to Swarm model
+- [x] Add SAFE integration fields to Swarm model
   - `safeAddress` - Gnosis SAFE address (optional)
   - `requireSafeSignoff` - Boolean to enable/disable requirement
-- [ ] Add SAFE SDK packages
-  - `@safe-global/safe-core-sdk`
-  - `@safe-global/safe-service-client`
-- [ ] Create SAFE service for interacting with SAFE API
+- [x] Add SAFE SDK packages
+  - `@safe-global/protocol-kit`
+  - `@safe-global/api-kit`
+- [x] Create SAFE service for interacting with SAFE API
 
 ### 13.2 Action Proposal Flow
-- [ ] Create `ProposedAction` model in database
+- [x] Create `ProposedAction` model in database
   - `id`, `swarmId`, `managerId`
   - `actionType` (SWAP, TRANSACTION, etc.)
   - `actionData` (JSON with transaction details)
   - `safeMessageHash` - Hash for SAFE to sign
   - `status` (PROPOSED, APPROVED, REJECTED, EXECUTED, EXPIRED)
   - `proposedAt`, `approvedAt`, `expiresAt`
-- [ ] Create manager endpoints for proposals
+- [x] Create manager endpoints for proposals
   - `POST /api/swarms/:id/proposals` - Create new proposal
   - `GET /api/swarms/:id/proposals` - List proposals
   - `GET /api/proposals/:id` - Get proposal details
   - `POST /api/proposals/:id/execute` - Execute approved proposal
 
 ### 13.3 SAFE Signature Verification (Backend)
-- [ ] Create function to generate SAFE message hash from action data
-- [ ] Create function to check SAFE signature status via SAFE API
-- [ ] Create function to verify on-chain SAFE signature (fallback)
-- [ ] Expose endpoint for checking proposal approval status
+- [x] Create function to generate SAFE message hash from action data
+- [x] Create function to check SAFE signature status via SAFE API
+- [x] Create function to verify on-chain SAFE signature (fallback)
+- [x] Expose endpoint for checking proposal approval status
   - `GET /api/proposals/:id/status`
 
 ### 13.4 Lit Action Enforcement
-- [ ] Update Lit Action to enforce SAFE sign-off
+- [x] Update Lit Action to support SAFE sign-off verification
   - Accept proposal ID and SAFE address as parameters
-  - Fetch proposal data from swarm-vault API (via `Lit.Actions.fetch`)
-  - Verify SAFE signature on-chain via RPC
+  - Verify SAFE signature via API before signing
   - Only sign if SAFE has approved the exact action hash
   - Reject with clear error if signature missing/invalid
-- [ ] Add SAFE verification parameters to transaction execution flow
-- [ ] Handle timeout/expiry of proposals
+- [x] Add SAFE verification parameters to transaction execution flow
+- [x] Handle timeout/expiry of proposals
 
 ### 13.5 Manager Proposal UI
-- [ ] Create ProposalForm component
-  - Similar to TransactionForm but creates proposal instead of executing
-  - Shows message hash for SAFE to sign
+- [x] Update SwapForm to support proposal mode when SAFE is configured
+  - Creates proposal instead of executing directly
+  - Shows proposal ID after creation
   - Link to SAFE app for signing
-- [ ] Create ProposalList component
+- [x] Create ProposalList component
   - Show pending, approved, executed proposals
   - Status indicators (waiting for SAFE, ready to execute, expired)
-- [ ] Create ProposalDetail component
-  - Show full action details
-  - Show SAFE signature status (polling)
+  - Check status and execute buttons
+- [x] Proposal detail integrated into list view
+  - Show message hash for SAFE signing
+  - Show approval status
   - "Execute" button when approved
-- [ ] Update SwapForm to support proposal mode when SAFE is configured
 
 ### 13.6 SAFE Configuration UI
-- [ ] Add SAFE configuration section to swarm settings
+- [x] Add SAFE configuration modal in swarm settings
   - Enable/disable SAFE requirement toggle
   - SAFE address input with validation
-  - Test connection to verify SAFE exists and is accessible
-- [ ] Show SAFE status on swarm detail page
+  - Validate SAFE exists before saving
+- [x] Show SAFE status on swarm detail page
+  - Display current SAFE address
+  - Show enabled/disabled status
 
 ---
 
-## Phase 14: Migrate to Naga Lit Network & SDK v8
+## Phase 14: Switch to Naga Lit Network
 
-### 14.1 SDK Upgrade
-- [ ] Upgrade Lit Protocol packages from v7 to v8
+> **Note:** This app hasn't launched yet, so no migration of existing PKPs is needed. Just wipe the local database and start fresh with the Naga network.
+
+### 14.1 Update Network Configuration
+- [ ] Update environment variables
+  - Change `LIT_NETWORK` to use Naga network (`naga-dev` for development, `naga` for production)
+- [ ] Update `packages/server/src/lib/env.ts` - Update network validation enum
+- [ ] Update `packages/server/src/lib/lit.ts` - Update network constants and imports
+- [ ] Update `.env.example` with Naga network values
+
+### 14.2 Verify SDK Compatibility
+- [ ] Confirm current Lit Protocol SDK packages work with Naga network
   - `@lit-protocol/lit-node-client`
   - `@lit-protocol/contracts-sdk`
   - `@lit-protocol/auth-helpers`
   - `@lit-protocol/constants`
-- [ ] Review breaking changes in v8 SDK
-  - Check for API changes in `LitNodeClient`
-  - Check for changes in `LitContracts`
-  - Review session signature generation changes
-  - Review auth signature changes
-- [ ] Update TypeScript types for v8 SDK
+- [ ] Check for any API changes needed for Naga
+- [ ] Update TypeScript types if needed
 
-### 14.2 Network Migration (Datil → Naga)
-- [ ] Update environment variables
-  - Change `LIT_NETWORK` from `datil-dev`/`datil-test`/`datil` to `naga-dev`/`naga-test`/`naga`
-- [ ] Update network references in code
-  - `packages/server/src/lib/lit.ts` - Update network constants
-  - `packages/server/src/lib/env.ts` - Update network validation
-- [ ] Verify RPC endpoints for Naga network
-- [ ] Update documentation with new network names
-
-### 14.3 PKP Migration
+### 14.3 Test Core Flows on Naga
+- [ ] Wipe local database (`pnpm db:reset` or drop and recreate)
 - [ ] Test PKP minting on Naga network
-- [ ] Verify existing PKP compatibility (or document migration path)
-- [ ] Update PKP-related functions for any v8 API changes
-  - `mintPkp()`
-  - `getSessionSigs()`
-
-### 14.4 Lit Action Updates
-- [ ] Review Lit Action execution changes in v8
-- [ ] Update `packages/lit-actions/src/signTransaction.ts` if needed
-- [ ] Test Lit Action signing on Naga network
-- [ ] Verify signature format compatibility with ZeroDev
-
-### 14.5 Integration Testing
-- [ ] Test full swarm creation flow on Naga
+- [ ] Test full swarm creation flow
 - [ ] Test user join flow with PKP session signing
 - [ ] Test transaction execution via PKP
 - [ ] Test swap execution via PKP
-- [ ] Document any differences in behavior
 
-### 14.6 Migration Guide
-- [ ] Document upgrade steps for existing deployments
-- [ ] Create migration script for existing swarms (if PKPs need re-minting)
+### 14.4 Lit Action Verification
+- [ ] Test `signTransaction.ts` Lit Action on Naga
+- [ ] Test `signTransactionWithSafe.ts` Lit Action on Naga
+- [ ] Verify signature format compatibility with ZeroDev
+
+### 14.5 Documentation Updates
 - [ ] Update README with Naga network information
-- [ ] Update `.env.example` with new network values
+- [ ] Update plan.md with Phase 14 learnings
 
 ---
 

@@ -17,6 +17,9 @@ export interface Swarm {
   description: string;
   litPkpPublicKey: string;
   litPkpTokenId: string;
+  // SAFE integration
+  safeAddress: string | null;
+  requireSafeSignoff: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -137,6 +140,7 @@ export enum ErrorCode {
   ZEROX_ERROR = "EXT_004",
   BUNDLER_ERROR = "EXT_005",
   TWITTER_ERROR = "EXT_006",
+  SAFE_ERROR = "EXT_007",
 
   // Transaction errors (6xxx)
   TX_FAILED = "TX_001",
@@ -144,6 +148,14 @@ export enum ErrorCode {
   INSUFFICIENT_BALANCE = "TX_003",
   NO_ACTIVE_MEMBERS = "TX_004",
   SIGNING_FAILED = "TX_005",
+
+  // Proposal errors (7xxx)
+  PROPOSAL_NOT_FOUND = "PROP_001",
+  PROPOSAL_NOT_APPROVED = "PROP_002",
+  PROPOSAL_EXPIRED = "PROP_003",
+  PROPOSAL_ALREADY_EXECUTED = "PROP_004",
+  SAFE_SIGNOFF_REQUIRED = "PROP_005",
+  SAFE_NOT_CONFIGURED = "PROP_006",
 
   // Internal errors (9xxx)
   INTERNAL_ERROR = "INT_001",
@@ -176,3 +188,68 @@ export interface AuthResponse {
 export interface NonceResponse {
   nonce: string;
 }
+
+// SAFE Sign-off types
+export type ProposedActionStatus =
+  | "PROPOSED"
+  | "APPROVED"
+  | "REJECTED"
+  | "EXECUTED"
+  | "EXPIRED";
+
+export type ProposedActionType = "SWAP" | "TRANSACTION";
+
+export interface ProposedAction {
+  id: string;
+  swarmId: string;
+  managerId: string;
+  actionType: ProposedActionType;
+  actionData: SwapActionData | TransactionActionData;
+  safeMessageHash: string;
+  status: ProposedActionStatus;
+  proposedAt: Date;
+  approvedAt: Date | null;
+  executedAt: Date | null;
+  expiresAt: Date;
+  executionTxId: string | null;
+}
+
+export interface SwapActionData {
+  type: "swap";
+  sellToken: string;
+  buyToken: string;
+  sellPercentage: number;
+  slippagePercentage: number;
+}
+
+export interface TransactionActionData {
+  type: "transaction";
+  template: TransactionTemplate;
+}
+
+export const CreateProposalSchema = z.object({
+  actionType: z.enum(["SWAP", "TRANSACTION"]),
+  actionData: z.union([
+    z.object({
+      type: z.literal("swap"),
+      sellToken: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      buyToken: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      sellPercentage: z.number().min(1).max(100),
+      slippagePercentage: z.number().min(0).max(50),
+    }),
+    z.object({
+      type: z.literal("transaction"),
+      template: z.any(), // Validated separately
+    }),
+  ]),
+  expiresInHours: z.number().min(1).max(168).default(24), // Max 1 week
+});
+
+export type CreateProposalInput = z.infer<typeof CreateProposalSchema>;
+
+export const UpdateSwarmSafeSchema = z.object({
+  safeAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).nullable(),
+  requireSafeSignoff: z.boolean(),
+});
+
+export type UpdateSwarmSafeInput = z.infer<typeof UpdateSwarmSafeSchema>;

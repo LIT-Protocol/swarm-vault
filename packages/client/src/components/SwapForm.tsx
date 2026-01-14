@@ -8,6 +8,7 @@ interface SwapFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmitted: () => void;
+  requiresSafeSignoff?: boolean;
 }
 
 interface HoldingsData {
@@ -63,13 +64,23 @@ interface SwapExecuteResult {
 
 const chainId = parseInt(import.meta.env.VITE_CHAIN_ID || "84532");
 
+interface ProposalResult {
+  id: string;
+  actionType: string;
+  safeMessageHash: string;
+  status: string;
+  signUrl?: string;
+}
+
 export default function SwapForm({
   swarmId,
   isOpen,
   onClose,
   onSubmitted,
+  requiresSafeSignoff = false,
 }: SwapFormProps) {
   const [step, setStep] = useState<"form" | "preview" | "executing" | "done">("form");
+  const [proposalResult, setProposalResult] = useState<ProposalResult | null>(null);
   const [holdings, setHoldings] = useState<HoldingsData | null>(null);
   const [isLoadingHoldings, setIsLoadingHoldings] = useState(false);
   const [preview, setPreview] = useState<SwapPreviewData | null>(null);
@@ -97,6 +108,7 @@ export default function SwapForm({
       setPreview(null);
       setError(null);
       setTransactionId(null);
+      setProposalResult(null);
     }
   }, [isOpen, swarmId]);
 
@@ -151,21 +163,44 @@ export default function SwapForm({
       setStep("executing");
       setError(null);
 
-      const result = await api.post<SwapExecuteResult>(
-        `/api/swarms/${swarmId}/swap/execute`,
-        {
-          sellToken,
-          buyToken,
-          sellPercentage,
-          slippagePercentage,
-        }
-      );
+      if (requiresSafeSignoff) {
+        // Create a proposal instead of executing directly
+        const result = await api.post<ProposalResult>(
+          `/api/swarms/${swarmId}/proposals`,
+          {
+            actionType: "SWAP",
+            actionData: {
+              type: "swap",
+              sellToken,
+              buyToken,
+              sellPercentage,
+              slippagePercentage,
+            },
+            expiresInHours: 24,
+          }
+        );
 
-      setTransactionId(result.transactionId);
-      setStep("done");
-      onSubmitted();
+        setProposalResult(result);
+        setStep("done");
+        onSubmitted();
+      } else {
+        // Execute directly
+        const result = await api.post<SwapExecuteResult>(
+          `/api/swarms/${swarmId}/swap/execute`,
+          {
+            sellToken,
+            buyToken,
+            sellPercentage,
+            slippagePercentage,
+          }
+        );
+
+        setTransactionId(result.transactionId);
+        setStep("done");
+        onSubmitted();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to execute swap");
+      setError(err instanceof Error ? err.message : requiresSafeSignoff ? "Failed to create proposal" : "Failed to execute swap");
       setStep("preview");
     } finally {
       setIsExecuting(false);
@@ -212,10 +247,10 @@ export default function SwapForm({
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="text-lg font-semibold text-gray-900">
-              {step === "form" && "New Swap"}
+              {step === "form" && (requiresSafeSignoff ? "New Swap Proposal" : "New Swap")}
               {step === "preview" && "Preview Swap"}
-              {step === "executing" && "Executing Swap..."}
-              {step === "done" && "Swap Submitted"}
+              {step === "executing" && (requiresSafeSignoff ? "Creating Proposal..." : "Executing Swap...")}
+              {step === "done" && (requiresSafeSignoff ? "Proposal Created" : "Swap Submitted")}
             </h3>
             <button
               onClick={onClose}
@@ -538,8 +573,10 @@ export default function SwapForm({
                     {isExecuting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Executing...
+                        {requiresSafeSignoff ? "Creating..." : "Executing..."}
                       </>
+                    ) : requiresSafeSignoff ? (
+                      "Create Proposal"
                     ) : (
                       "Execute Swap"
                     )}
@@ -556,25 +593,53 @@ export default function SwapForm({
               </div>
             ) : step === "done" ? (
               <div className="text-center py-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className={`w-16 h-16 ${proposalResult ? "bg-yellow-100" : "bg-green-100"} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                  {proposalResult ? (
+                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Swap Submitted!
+                  {proposalResult ? "Proposal Created!" : "Swap Submitted!"}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Your swap transactions are being processed.
+                  {proposalResult
+                    ? "Your swap proposal has been created and is awaiting SAFE approval."
+                    : "Your swap transactions are being processed."}
                 </p>
-                {transactionId && (
+                {proposalResult && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500">
+                      Proposal ID: {proposalResult.id.slice(0, 8)}...
+                    </p>
+                    {proposalResult.signUrl && (
+                      <a
+                        href={proposalResult.signUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Sign in SAFE
+                      </a>
+                    )}
+                  </div>
+                )}
+                {transactionId && !proposalResult && (
                   <p className="text-sm text-gray-500">
                     Transaction ID: {transactionId.slice(0, 8)}...
                   </p>
                 )}
                 <button
                   onClick={onClose}
-                  className="mt-6 px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium"
+                  className="mt-6 px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium"
                 >
                   Close
                 </button>

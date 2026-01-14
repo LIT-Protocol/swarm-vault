@@ -331,63 +331,21 @@ JWT_SECRET=...
 
 ## Upcoming Features
 
-### Twitter OAuth for Managers (Phase 11)
+### Switch to Naga Lit Network (Phase 14)
 
-Managers must link a Twitter/X account before creating swarms. This proves the manager controls the associated Twitter account, adding accountability and trust.
+The app currently uses the Datil Lit network. Phase 14 switches to the Naga network, which is Lit Protocol's latest production network.
 
-**Flow:**
-1. Manager navigates to profile/settings
-2. Clicks "Connect Twitter" → redirected to Twitter OAuth
-3. After authorization, Twitter ID and username stored
-4. Swarm creation requires a linked Twitter account
-5. Manager's Twitter handle displayed on swarm pages
+**Note:** Since this app hasn't launched yet, no migration of existing PKPs is needed. Just wipe the local database and start fresh.
 
-**Database Changes:**
-- `User.twitterId` - Twitter user ID
-- `User.twitterUsername` - Twitter handle (@username)
-
-### 0x Swap Fee Collection (Phase 12)
-
-Add a platform fee (50 basis points = 0.5%) to all swaps that goes to a protocol-controlled wallet.
-
-**Implementation:**
-- 0x API supports `buyTokenPercentageFee` and `feeRecipient` parameters
-- Fee is taken from the buy token (output) automatically
-- Fee recipient wallet address stored in `SWAP_FEE_RECIPIENT` env var
-- Fee amount shown in swap preview UI for transparency
+**Changes Required:**
+1. Update `LIT_NETWORK` environment variable to `naga-dev` (development) or `naga` (production)
+2. Update network validation in `packages/server/src/lib/env.ts`
+3. Update network constants in `packages/server/src/lib/lit.ts`
+4. Verify SDK compatibility with Naga network
+5. Test all PKP operations (minting, signing, Lit Actions)
 
 **Environment Variables:**
-- `SWAP_FEE_RECIPIENT` - Wallet address receiving fees
-- `SWAP_FEE_BPS` - Fee in basis points (default: 50)
-
-### Gnosis SAFE Sign-Off (Phase 13)
-
-Allow swarms to require Gnosis SAFE multi-sig approval before manager actions execute. This enables institutional-grade controls.
-
-**Flow:**
-1. Swarm is configured with a SAFE address
-2. Manager proposes an action (swap, transaction) → creates `ProposedAction` with hash
-3. SAFE signers review and sign the message in SAFE app
-4. Manager clicks "Execute" on approved proposal
-5. **Lit Action verifies SAFE signature on-chain before signing the transaction**
-
-**Key Security Feature:** The Lit Action itself enforces the SAFE approval:
-```javascript
-// In Lit Action
-const proposalData = await Lit.Actions.fetch(`${API_URL}/proposals/${proposalId}`);
-const safeSignature = await checkSafeSignature(safeAddress, proposalData.messageHash);
-if (!safeSignature.isValid) {
-  throw new Error("SAFE has not signed this proposal");
-}
-// Only then proceed to sign
-```
-
-This means even if someone bypasses the API, the Lit PKP will refuse to sign without valid SAFE approval.
-
-**Database Changes:**
-- `Swarm.safeAddress` - Optional SAFE address
-- `Swarm.requireSafeSignoff` - Boolean flag
-- New `ProposedAction` model for tracking proposals and their status
+- `LIT_NETWORK` - Change from `datil-dev`/`datil` to `naga-dev`/`naga`
 
 ## Future Enhancements
 
@@ -1248,11 +1206,123 @@ const permissionAccount = await deserializePermissionAccount(
 
 **Status:** ✅ Completed
 
+### Phase 13 Learnings (Gnosis SAFE Sign-Off)
+
+**Completed:** 2025-01-13
+
+#### SAFE SDK Integration
+
+1. **Package Selection**: Used `@safe-global/api-kit` for interacting with the SAFE Transaction Service API. The Protocol Kit was added as a dependency but the API Kit handles most signature verification needs.
+
+2. **SAFE Transaction Service**: Each SAFE network has its own Transaction Service:
+   - Base Mainnet: `https://safe-transaction-base.safe.global`
+   - Base Sepolia: `https://safe-transaction-base-sepolia.safe.global`
+   - The service stores off-chain SAFE messages and their confirmations
+
+3. **Message Signing vs Transaction Signing**: SAFE supports two approval flows:
+   - Transaction signing: For on-chain transactions requiring multi-sig
+   - **Message signing**: For off-chain messages (EIP-712 typed data) - used for proposal approvals
+
+   We use message signing because proposals are off-chain concepts that don't require on-chain SAFE transactions.
+
+#### Proposal Architecture
+
+1. **EIP-712 Message Hash**: Each proposal generates a unique hash from:
+   - Domain: "SwarmVault"
+   - Swarm ID
+   - Proposal ID
+   - Action type (SWAP, TRANSACTION)
+   - Hash of action data (keccak256)
+   - Expiration timestamp
+
+   This hash is what SAFE signers approve.
+
+2. **Proposal Lifecycle**:
+   ```
+   PROPOSED → APPROVED → EXECUTED
+       ↓         ↓
+   REJECTED   EXPIRED
+   ```
+   - `PROPOSED`: Created, awaiting SAFE signatures
+   - `APPROVED`: SAFE threshold reached (checked via API)
+   - `REJECTED`: Cancelled by manager
+   - `EXECUTED`: Action completed
+   - `EXPIRED`: Past expiration date
+
+3. **Status Checking**: The `/api/proposals/:id/status` endpoint:
+   - Fetches message status from SAFE Transaction Service
+   - Compares confirmations to threshold
+   - Updates proposal status to APPROVED when threshold met
+   - Returns signature details for transparency
+
+#### Backend vs Lit Action Verification
+
+1. **Dual Verification Approach**:
+   - **Backend (API-level)**: Primary enforcement - checks SAFE signatures before allowing execution
+   - **Lit Action**: Secondary enforcement - can verify independently as a fallback
+
+   This provides defense in depth while keeping the flow simple.
+
+2. **Backend Verification Choice**: Most operations go through the API, so backend enforcement is sufficient. The Lit Action enforcement is available for scenarios where additional trust is needed.
+
+3. **SAFE Sign URL Generation**: Created helper to generate URLs that open the SAFE app directly to the message signing page:
+   ```
+   https://app.safe.global/transactions/msg?safe=base:{safeAddress}&messageHash={hash}
+   ```
+
+#### Frontend Components
+
+1. **ProposalList Component**: Displays proposals with:
+   - Pending proposals with action buttons (Sign in SAFE, Check Status, Execute, Cancel)
+   - Past proposals (executed, rejected, expired) for audit trail
+   - Message hash display for manual verification
+   - Status badges with color coding
+
+2. **SafeConfigModal Component**: Allows managers to:
+   - Enter/update SAFE address (with format validation)
+   - Enable/disable sign-off requirement toggle
+   - Clear SAFE configuration (with confirmation)
+   - Shows helpful info about multi-sig approval
+
+3. **SwapForm Integration**: When SAFE sign-off is required:
+   - Shows "Create Proposal" instead of "Execute Swap"
+   - Creates proposal record via API
+   - Shows proposal result with SAFE signing link
+   - Refreshes proposal list to show new pending proposal
+
+#### Key Files Created
+
+- `packages/server/src/lib/safe.ts` - SAFE service with hash computation, signature verification, validation
+- `packages/server/src/routes/proposals.ts` - Full proposal CRUD API (create, list, get, status, execute, cancel)
+- `packages/lit-actions/src/signTransactionWithSafe.ts` - Lit Action with SAFE verification
+- `packages/client/src/components/ProposalList.tsx` - Proposal management UI
+- `packages/client/src/components/SafeConfigModal.tsx` - SAFE configuration modal
+- `prisma/migrations/20250113000000_add_safe_signoff/migration.sql` - Database migration
+
+#### Key Files Modified
+
+- `prisma/schema.prisma` - Added SAFE fields to Swarm, created ProposedAction model
+- `packages/shared/src/types/index.ts` - Added proposal types, schemas, error codes
+- `packages/server/src/routes/swarms.ts` - Added SAFE configuration endpoint
+- `packages/server/src/index.ts` - Registered proposals router
+- `packages/client/src/components/SwapForm.tsx` - Added proposal mode
+- `packages/client/src/pages/SwarmDetail.tsx` - Added SAFE status and proposals section
+
+#### Error Codes Added
+
+- `SAFE_ERROR` - Generic SAFE service error
+- `PROPOSAL_NOT_FOUND` - Proposal doesn't exist
+- `PROPOSAL_NOT_APPROVED` - Trying to execute unapproved proposal
+- `PROPOSAL_EXPIRED` - Proposal past expiration
+- `PROPOSAL_ALREADY_EXECUTED` - Duplicate execution attempt
+- `SAFE_SIGNOFF_REQUIRED` - Action requires SAFE approval
+- `SAFE_NOT_CONFIGURED` - Swarm has no SAFE configured
+
 ---
 
 ## Project Status
 
-All 12 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 13 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1267,3 +1337,4 @@ All 12 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - Full API documentation
 - **Twitter OAuth for manager verification**
 - **0x Swap Fee Collection (0.5% platform fee)**
+- **Gnosis SAFE multi-sig sign-off for institutional-grade controls**

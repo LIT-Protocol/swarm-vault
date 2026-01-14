@@ -5,12 +5,16 @@ import { api } from "../lib/api";
 import TransactionForm from "../components/TransactionForm";
 import TransactionHistory from "../components/TransactionHistory";
 import SwapForm from "../components/SwapForm";
+import ProposalList from "../components/ProposalList";
+import SafeConfigModal from "../components/SafeConfigModal";
 
 interface SwarmData {
   id: string;
   name: string;
   description: string;
   litPkpPublicKey?: string;
+  safeAddress?: string | null;
+  requireSafeSignoff?: boolean;
   createdAt: string;
   updatedAt: string;
   managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
@@ -36,7 +40,9 @@ export default function SwarmDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showTxForm, setShowTxForm] = useState(false);
   const [showSwapForm, setShowSwapForm] = useState(false);
+  const [showSafeConfig, setShowSafeConfig] = useState(false);
   const [txRefreshTrigger, setTxRefreshTrigger] = useState(0);
+  const [proposalRefreshTrigger, setProposalRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchSwarm = async () => {
@@ -196,6 +202,47 @@ export default function SwarmDetail() {
                   </span>
                 )
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* SAFE Configuration (Manager Only) */}
+        {swarm.isManager && (
+          <div className="mt-4 bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-1">
+                  Gnosis SAFE Sign-off
+                </h3>
+                {swarm.requireSafeSignoff && swarm.safeAddress ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Enabled
+                    </span>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {truncateAddress(swarm.safeAddress)}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">
+                    Not configured
+                  </span>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {swarm.requireSafeSignoff
+                    ? "All manager actions require SAFE multi-sig approval"
+                    : "Manager actions execute immediately without approval"}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSafeConfig(true)}
+                className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"
+              >
+                Configure
+              </button>
             </div>
           </div>
         )}
@@ -376,8 +423,45 @@ export default function SwarmDetail() {
           swarmId={id!}
           isOpen={showSwapForm}
           onClose={() => setShowSwapForm(false)}
-          onSubmitted={() => setTxRefreshTrigger((n) => n + 1)}
+          onSubmitted={() => {
+            setTxRefreshTrigger((n) => n + 1);
+            setProposalRefreshTrigger((n) => n + 1);
+          }}
+          requiresSafeSignoff={swarm.requireSafeSignoff}
         />
+      )}
+
+      {/* SAFE Configuration Modal */}
+      {swarm.isManager && (
+        <SafeConfigModal
+          swarmId={id!}
+          currentSafeAddress={swarm.safeAddress || null}
+          currentRequireSafeSignoff={swarm.requireSafeSignoff || false}
+          isOpen={showSafeConfig}
+          onClose={() => setShowSafeConfig(false)}
+          onUpdated={() => {
+            // Refresh swarm data
+            const fetchSwarm = async () => {
+              const data = await api.get<SwarmData>(`/api/swarms/${id}`);
+              setSwarm(data);
+            };
+            fetchSwarm();
+          }}
+        />
+      )}
+
+      {/* Proposals Section (when SAFE sign-off is enabled) */}
+      {swarm.isManager && swarm.requireSafeSignoff && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Pending Proposals
+          </h2>
+          <ProposalList
+            swarmId={id!}
+            requiresSafeSignoff={swarm.requireSafeSignoff || false}
+            refreshTrigger={proposalRefreshTrigger}
+          />
+        </div>
       )}
     </div>
   );

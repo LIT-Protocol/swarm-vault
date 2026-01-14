@@ -29,6 +29,9 @@ model Swarm {
   litPkpPublicKey String
   litPkpTokenId   String
   litPkpEthAddress String  // ETH address derived from PKP public key
+  // Gnosis SAFE integration for multi-sig approval
+  safeAddress       String?  // Gnosis SAFE address for sign-off
+  requireSafeSignoff Boolean @default(false) // Whether manager actions require SAFE approval
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -36,6 +39,7 @@ model Swarm {
   managers     SwarmManager[]
   memberships  SwarmMembership[]
   transactions Transaction[]
+  proposals    ProposedAction[]
 }
 
 model SwarmManager {
@@ -115,4 +119,36 @@ model TransactionTarget {
   // Relations
   transaction Transaction     @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   membership  SwarmMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+}
+
+// Proposed action status for SAFE sign-off flow
+enum ProposedActionStatus {
+  PROPOSED   // Waiting for SAFE signature
+  APPROVED   // SAFE has signed, ready to execute
+  REJECTED   // Proposal was rejected or cancelled
+  EXECUTED   // Proposal was executed
+  EXPIRED    // Proposal expired before execution
+}
+
+enum ProposedActionType {
+  SWAP         // Token swap
+  TRANSACTION  // Generic transaction template
+}
+
+model ProposedAction {
+  id              String              @id @default(uuid())
+  swarmId         String
+  managerId       String              // User who proposed the action
+  actionType      ProposedActionType
+  actionData      Json                // JSON with action details (swap params or tx template)
+  safeMessageHash String              // Hash for SAFE to sign (EIP-712)
+  status          ProposedActionStatus @default(PROPOSED)
+  proposedAt      DateTime            @default(now())
+  approvedAt      DateTime?           // When SAFE signed
+  executedAt      DateTime?           // When action was executed
+  expiresAt       DateTime            // Proposal expiration time
+  executionTxId   String?             // Link to Transaction record after execution
+
+  // Relations
+  swarm Swarm @relation(fields: [swarmId], references: [id], onDelete: Cascade)
 }

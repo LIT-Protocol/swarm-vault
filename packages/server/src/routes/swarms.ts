@@ -2,7 +2,8 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, optionalAuthMiddleware } from "../middleware/auth.js";
 import { mintPKP } from "../lib/lit.js";
-import { CreateSwarmSchema } from "@swarm-vault/shared";
+import { CreateSwarmSchema, UpdateSwarmSafeSchema } from "@swarm-vault/shared";
+import { validateSafeAddress } from "../lib/safe.js";
 
 const router = Router();
 
@@ -203,6 +204,9 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
         litPkpPublicKey: isManager ? swarm.litPkpPublicKey : undefined,
         // PKP ETH address is needed by authenticated users to create their agent wallet
         litPkpEthAddress: req.user ? swarm.litPkpEthAddress : undefined,
+        // SAFE configuration (visible to all, but only managers can modify)
+        safeAddress: swarm.safeAddress,
+        requireSafeSignoff: swarm.requireSafeSignoff,
         createdAt: swarm.createdAt,
         updatedAt: swarm.updatedAt,
         managers: swarm.managers.map((m) => ({
@@ -288,6 +292,103 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
     res.status(500).json({
       success: false,
       error: "Failed to get swarm members",
+    });
+  }
+});
+
+// PATCH /api/swarms/:id/safe - Update SAFE configuration (manager only)
+router.patch("/:id/safe", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Verify swarm exists and user is a manager
+    const swarm = await prisma.swarm.findUnique({
+      where: { id },
+      include: {
+        managers: true,
+      },
+    });
+
+    if (!swarm) {
+      res.status(404).json({
+        success: false,
+        error: "Swarm not found",
+        errorCode: "RES_003",
+      });
+      return;
+    }
+
+    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    if (!isManager) {
+      res.status(403).json({
+        success: false,
+        error: "Only managers can update SAFE configuration",
+        errorCode: "PERM_002",
+      });
+      return;
+    }
+
+    // Validate input
+    const parseResult = UpdateSwarmSafeSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({
+        success: false,
+        error: parseResult.error.errors[0].message,
+        errorCode: "VAL_001",
+      });
+      return;
+    }
+
+    const { safeAddress, requireSafeSignoff } = parseResult.data;
+
+    // If enabling SAFE sign-off, validate the SAFE address
+    if (requireSafeSignoff && safeAddress) {
+      const validation = await validateSafeAddress(safeAddress);
+      if (!validation.valid) {
+        res.status(400).json({
+          success: false,
+          error: validation.error || "Invalid SAFE address",
+          errorCode: "VAL_002",
+        });
+        return;
+      }
+    }
+
+    // Can't require sign-off without a SAFE address
+    if (requireSafeSignoff && !safeAddress) {
+      res.status(400).json({
+        success: false,
+        error: "Cannot require SAFE sign-off without a SAFE address",
+        errorCode: "VAL_001",
+      });
+      return;
+    }
+
+    // Update the swarm
+    const updated = await prisma.swarm.update({
+      where: { id },
+      data: {
+        safeAddress,
+        requireSafeSignoff,
+      },
+    });
+
+    console.log(`[Swarm] Updated SAFE config for ${id}: safeAddress=${safeAddress}, requireSafeSignoff=${requireSafeSignoff}`);
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        safeAddress: updated.safeAddress,
+        requireSafeSignoff: updated.requireSafeSignoff,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to update SAFE configuration:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update SAFE configuration",
+      errorCode: "INT_001",
     });
   }
 });
