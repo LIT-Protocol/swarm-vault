@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import type { ProposedActionStatus, ProposedActionType } from "@swarm-vault/shared";
 import { signSafeMessage } from "../lib/safeMessage";
+import { EIP712TypedData } from "@safe-global/types-kit";
+import { hashSafeMessage } from "@safe-global/protocol-kit";
 
 interface ProposalData {
   id: string;
@@ -14,7 +16,7 @@ interface ProposalData {
     slippagePercentage?: number;
     template?: unknown;
   };
-  safeMessageHash: string; // Raw message string for signing
+  safeTypedData: EIP712TypedData; // EIP-712 typed data for signing
   status: ProposedActionStatus;
   proposedAt: string;
   approvedAt: string | null;
@@ -151,11 +153,11 @@ export default function ProposalList({
       // Sign using Safe Protocol Kit's signMessage method
       console.log("[ProposalList] Signing with Safe Protocol Kit...");
       console.log("[ProposalList] Safe address:", safeAddress);
-      console.log("[ProposalList] Message (proposal hash):", proposal.safeMessageHash);
+      console.log("[ProposalList] EIP-712 typed data:", proposal.safeTypedData);
 
       const signature = await signSafeMessage(
         safeAddress,
-        proposal.safeMessageHash
+        proposal.safeTypedData
       );
 
       console.log("[ProposalList] Signature:", signature);
@@ -163,7 +165,7 @@ export default function ProposalList({
       // Submit the signature to propose to SAFE
       const result = await api.post<{
         id: string;
-        safeMessageHash: string;
+        safeTypedData: EIP712TypedData;
         signUrl: string;
         message: string;
       }>(`/api/proposals/${proposal.id}/propose-to-safe`, {
@@ -278,7 +280,7 @@ export default function ProposalList({
                 <div className="mb-3 p-2 bg-white rounded border border-yellow-200">
                   <p className="text-xs text-gray-500 mb-1">Message Hash for SAFE to sign:</p>
                   <code className="text-xs text-gray-700 break-all">
-                    {proposal.safeMessageHash}
+                    {hashSafeMessage(proposal.safeTypedData)}
                   </code>
                 </div>
 

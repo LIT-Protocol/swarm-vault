@@ -151,7 +151,7 @@ router.post(
           id: proposal.id,
           actionType: proposal.actionType,
           actionData: proposal.actionData,
-          safeMessageHash: safeTypedData, // Return EIP-712 typed data object for client to sign
+          safeTypedData: safeTypedData, // Return EIP-712 typed data object for client to sign
           status: proposal.status,
           proposedAt: proposal.proposedAt,
           expiresAt: proposal.expiresAt,
@@ -207,7 +207,7 @@ router.get(
           id: p.id,
           actionType: p.actionType,
           actionData: p.actionData,
-          safeMessageHash: typedData, // Return deserialized EIP-712 typed data
+          safeTypedData: typedData, // Return deserialized EIP-712 typed data
           status: p.status,
           proposedAt: p.proposedAt,
           approvedAt: p.approvedAt,
@@ -292,7 +292,7 @@ router.get(
           swarmId: proposal.swarmId,
           actionType: proposal.actionType,
           actionData: proposal.actionData,
-          safeMessageHash: typedData, // Return deserialized EIP-712 typed data
+          safeTypedData: typedData, // Return deserialized EIP-712 typed data
           status: proposal.status,
           proposedAt: proposal.proposedAt,
           approvedAt: proposal.approvedAt,
@@ -874,7 +874,7 @@ router.post(
         success: true,
         data: {
           id: proposal.id,
-          safeMessageHash: typedData, // Return the EIP-712 typed data
+          safeTypedData: typedData, // Return the EIP-712 typed data
           signUrl,
           message:
             "Message successfully proposed to SAFE. Other owners can now sign.",

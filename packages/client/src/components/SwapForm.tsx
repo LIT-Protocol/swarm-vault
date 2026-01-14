@@ -70,7 +70,7 @@ const chainId = parseInt(import.meta.env.VITE_CHAIN_ID || "84532");
 interface ProposalResult {
   id: string;
   actionType: string;
-  safeMessageHash: unknown; // EIP-712 typed data object for signing
+  safeTypedData: unknown; // EIP-712 typed data object for signing
   status: string;
   signUrl?: string;
 }
@@ -201,13 +201,13 @@ export default function SwapForm({
           console.log("[SwapForm] Signing with Safe Protocol Kit...");
           console.log("[SwapForm] Safe address:", safeAddress);
           console.log(
-            "[SwapForm] Message (proposal hash):",
-            result.safeMessageHash
+            "[SwapForm] EIP-712 typed data:",
+            result.safeTypedData
           );
 
           const signature = await signSafeMessage(
             safeAddress,
-            result.safeMessageHash as EIP712TypedData
+            result.safeTypedData as EIP712TypedData
           );
 
           console.log("[SwapForm] Signature:", signature);
@@ -215,7 +215,7 @@ export default function SwapForm({
           // Step 3: Submit the signature to propose the message to SAFE
           const proposeResult = await api.post<{
             id: string;
-            safeMessageHash: string;
+            safeTypedData: unknown;
             signUrl: string;
             message: string;
           }>(`/api/proposals/${result.id}/propose-to-safe`, {
