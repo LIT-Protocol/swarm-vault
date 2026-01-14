@@ -14,7 +14,9 @@ import {
 } from "../lib/safe.js";
 import { executeSwapTransaction } from "../lib/swapExecutor.js";
 import { executeSwarmTransaction } from "../lib/transactionExecutor.js";
-import { getSwapQuotes, type SwapExecuteData } from "../lib/zeroEx.js";
+import { getSwapExecuteDataForWallets, isNativeToken, type SwapExecuteData } from "../lib/zeroEx.js";
+import { getEthBalance, getTokenBalance } from "../lib/alchemy.js";
+import { type Address } from "viem";
 import { v4 as uuidv4 } from "uuid";
 
 const router = Router();
@@ -527,14 +529,36 @@ router.post("/proposals/:id/execute", authMiddleware, async (req: Request, res: 
         slippagePercentage: number;
       };
 
-      // Get quotes for each member
-      const walletAddresses = memberships.map(m => m.agentWalletAddress);
-      const quotes = await getSwapQuotes(
-        swapData.sellToken,
-        swapData.buyToken,
+      // Get wallet addresses
+      const walletAddresses = memberships.map(m => m.agentWalletAddress as Address);
+      const sellToken = swapData.sellToken as Address;
+      const buyToken = swapData.buyToken as Address;
+      const sellPercentage = swapData.sellPercentage;
+      const slippagePercentage = swapData.slippagePercentage;
+
+      // Function to get sell amount for each wallet
+      const getAmount = async (walletAddress: Address): Promise<string> => {
+        let balance: bigint;
+
+        if (isNativeToken(sellToken)) {
+          balance = await getEthBalance(walletAddress);
+        } else {
+          balance = await getTokenBalance(walletAddress, sellToken);
+        }
+
+        if (balance === 0n) return "0";
+
+        const amount = (balance * BigInt(sellPercentage)) / 100n;
+        return amount.toString();
+      };
+
+      // Get execution data for all wallets
+      const executeData = await getSwapExecuteDataForWallets(
         walletAddresses,
-        swapData.sellPercentage,
-        swapData.slippagePercentage
+        sellToken,
+        buyToken,
+        getAmount,
+        slippagePercentage / 100
       );
 
       // Execute the swap
@@ -542,7 +566,7 @@ router.post("/proposals/:id/execute", authMiddleware, async (req: Request, res: 
         transaction.id,
         proposal.swarm,
         memberships,
-        quotes as SwapExecuteData[]
+        executeData
       ).catch((err) => {
         console.error(`[Proposals] Swap execution error for ${transaction.id}:`, err);
       });
