@@ -1337,4 +1337,21 @@ All 13 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - Full API documentation
 - **Twitter OAuth for manager verification**
 - **0x Swap Fee Collection (0.5% platform fee)**
-- **Gnosis SAFE multi-sig sign-off for institutional-grade controls**
+- ~~**Gnosis SAFE multi-sig sign-off for institutional-grade controls**~~ (disabled in UI for launch - see Phase 13.5)
+
+### Phase 13.5: SAFE UI Disabled for Launch
+
+The Gnosis SAFE sign-off feature (Phase 13) is complete on the backend and in the database, but has been disabled in the UI for the initial launch. The feature needs additional testing and fixes before being exposed to users.
+
+**What's disabled:**
+- SAFE configuration button in SwarmDetail
+- SAFE status display
+- Proposal list section
+- Proposal mode in SwapForm (swaps execute directly)
+
+**What remains:**
+- Backend routes for SAFE operations
+- Database schema (Swarm.safeAddress, Swarm.requireSafeSignoff, ProposedAction model)
+- Lit Actions with SAFE verification capability
+
+To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `SwapForm.tsx`.

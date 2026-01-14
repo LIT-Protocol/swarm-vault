@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import { getTokensForChain, type TokenInfo } from "@swarm-vault/shared";
 import { formatUnits } from "viem";
-import { signSafeMessage } from "../lib/safeMessage";
-import { EIP712TypedData } from "@safe-global/types-kit";
+// SAFE_DISABLED: Commenting out SAFE imports for launch
+// import { signSafeMessage } from "../lib/safeMessage";
+// import { EIP712TypedData } from "@safe-global/types-kit";
 
 interface SwapFormProps {
   swarmId: string;
   isOpen: boolean;
   onClose: () => void;
   onSubmitted: () => void;
-  requiresSafeSignoff?: boolean;
-  safeAddress?: string | null;
+  // SAFE_DISABLED: Props kept for easy re-enable but not used
+  // requiresSafeSignoff?: boolean;
+  // safeAddress?: string | null;
 }
 
 interface HoldingsData {
@@ -80,9 +82,11 @@ export default function SwapForm({
   isOpen,
   onClose,
   onSubmitted,
-  requiresSafeSignoff = false,
-  safeAddress,
+  // SAFE_DISABLED: requiresSafeSignoff = false,
+  // SAFE_DISABLED: safeAddress,
 }: SwapFormProps) {
+  // SAFE_DISABLED: Force SAFE signoff to be disabled
+  const requiresSafeSignoff = false;
   const [step, setStep] = useState<"form" | "preview" | "executing" | "done">(
     "form"
   );
@@ -173,7 +177,9 @@ export default function SwapForm({
       setStep("executing");
       setError(null);
 
+      // SAFE_DISABLED: This entire block is unreachable since requiresSafeSignoff is always false
       if (requiresSafeSignoff) {
+        /* SAFE_DISABLED_START
         if (!safeAddress) {
           throw new Error("SAFE address is required for SAFE sign-off");
         }
@@ -233,6 +239,8 @@ export default function SwapForm({
         setProposalResult(result);
         setStep("done");
         onSubmitted();
+        SAFE_DISABLED_END */
+        throw new Error("SAFE signoff is disabled");
       } else {
         // Execute directly
         const result = await api.post<SwapExecuteResult>(

@@ -5,8 +5,9 @@ import { api } from "../lib/api";
 import TransactionForm from "../components/TransactionForm";
 import TransactionHistory from "../components/TransactionHistory";
 import SwapForm from "../components/SwapForm";
-import ProposalList from "../components/ProposalList";
-import SafeConfigModal from "../components/SafeConfigModal";
+// SAFE_DISABLED: Commenting out SAFE UI components for launch - re-enable when SAFE is ready
+// import ProposalList from "../components/ProposalList";
+// import SafeConfigModal from "../components/SafeConfigModal";
 
 interface SwarmData {
   id: string;
@@ -40,9 +41,9 @@ export default function SwarmDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showTxForm, setShowTxForm] = useState(false);
   const [showSwapForm, setShowSwapForm] = useState(false);
-  const [showSafeConfig, setShowSafeConfig] = useState(false);
+  // SAFE_DISABLED: const [showSafeConfig, setShowSafeConfig] = useState(false);
   const [txRefreshTrigger, setTxRefreshTrigger] = useState(0);
-  const [proposalRefreshTrigger, setProposalRefreshTrigger] = useState(0);
+  // SAFE_DISABLED: const [proposalRefreshTrigger, setProposalRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchSwarm = async () => {
@@ -206,7 +207,7 @@ export default function SwarmDetail() {
           </div>
         )}
 
-        {/* SAFE Configuration (Manager Only) */}
+        {/* SAFE_DISABLED: SAFE Configuration section commented out for launch
         {swarm.isManager && (
           <div className="mt-4 bg-gray-50 rounded-lg p-4">
             <div className="flex justify-between items-start">
@@ -246,6 +247,7 @@ export default function SwarmDetail() {
             </div>
           </div>
         )}
+        */}
       </div>
 
       {swarm.isManager && (
@@ -425,14 +427,14 @@ export default function SwarmDetail() {
           onClose={() => setShowSwapForm(false)}
           onSubmitted={() => {
             setTxRefreshTrigger((n) => n + 1);
-            setProposalRefreshTrigger((n) => n + 1);
+            // SAFE_DISABLED: setProposalRefreshTrigger((n) => n + 1);
           }}
-          requiresSafeSignoff={swarm.requireSafeSignoff}
-          safeAddress={swarm.safeAddress}
+          // SAFE_DISABLED: requiresSafeSignoff={swarm.requireSafeSignoff}
+          // SAFE_DISABLED: safeAddress={swarm.safeAddress}
         />
       )}
 
-      {/* SAFE Configuration Modal */}
+      {/* SAFE_DISABLED: SAFE Configuration Modal commented out for launch
       {swarm.isManager && (
         <SafeConfigModal
           swarmId={id!}
@@ -450,8 +452,9 @@ export default function SwarmDetail() {
           }}
         />
       )}
+      */}
 
-      {/* Proposals Section (when SAFE sign-off is enabled) */}
+      {/* SAFE_DISABLED: Proposals Section commented out for launch
       {swarm.isManager && swarm.requireSafeSignoff && (
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -465,6 +468,7 @@ export default function SwarmDetail() {
           />
         </div>
       )}
+      */}
     </div>
   );
 }

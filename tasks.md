@@ -477,6 +477,23 @@
 
 ---
 
+## Phase 13.5: Disable SAFE UI for Launch [COMPLETED]
+
+> **Note:** SAFE functionality is complete on the backend and in the database, but needs more testing/fixes before launch. Disabling in the UI means users can't access it, allowing us to launch without it and re-enable later.
+
+### 13.5.1 Comment Out SAFE UI Elements
+- [x] `SwarmDetail.tsx` - Comment out SAFE configuration button and status display
+- [x] `SwarmDetail.tsx` - Comment out ProposalList section
+- [x] `SwapForm.tsx` - Comment out proposal mode logic (always execute directly)
+- [x] TypeScript compiles successfully
+
+### 13.5.2 Keep Backend Intact
+- [x] Backend SAFE routes remain (no changes needed)
+- [x] Database schema remains (no changes needed)
+- [x] Lit Actions with SAFE verification remain (no changes needed)
+
+---
+
 ## Phase 14: Switch to Naga Lit Network
 
 > **Note:** This app hasn't launched yet, so no migration of existing PKPs is needed. Just wipe the local database and start fresh with the Naga network.
