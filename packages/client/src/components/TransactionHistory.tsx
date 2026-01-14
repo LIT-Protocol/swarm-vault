@@ -72,7 +72,9 @@ export default function TransactionHistory({
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTx, setSelectedTx] = useState<TransactionDetailData | null>(null);
+  const [selectedTx, setSelectedTx] = useState<TransactionDetailData | null>(
+    null
+  );
   const [detailLoading, setDetailLoading] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
@@ -85,7 +87,9 @@ export default function TransactionHistory({
       setTransactions(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load transactions");
+      setError(
+        err instanceof Error ? err.message : "Failed to load transactions"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +114,9 @@ export default function TransactionHistory({
   const loadDetail = async (txId: string) => {
     try {
       setDetailLoading(true);
-      const data = await api.get<TransactionDetailData>(`/api/transactions/${txId}`);
+      const data = await api.get<TransactionDetailData>(
+        `/api/transactions/${txId}`
+      );
       setSelectedTx(data);
     } catch (err) {
       console.error("Failed to load transaction detail:", err);
@@ -134,7 +140,9 @@ export default function TransactionHistory({
       onResent?.();
     } catch (err) {
       console.error("Failed to resend transaction:", err);
-      alert(err instanceof Error ? err.message : "Failed to resend transaction");
+      alert(
+        err instanceof Error ? err.message : "Failed to resend transaction"
+      );
     } finally {
       setResendingId(null);
     }
@@ -221,16 +229,41 @@ export default function TransactionHistory({
                 >
                   {resendingId === tx.id ? (
                     <>
-                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      <svg
+                        className="animate-spin h-3 w-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
                       </svg>
                       Sending...
                     </>
                   ) : (
                     <>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
                       </svg>
                       Resend
                     </>
@@ -260,8 +293,18 @@ export default function TransactionHistory({
                   onClick={() => setSelectedTx(null)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -290,15 +333,22 @@ export default function TransactionHistory({
                         if (resendingId) return;
                         setResendingId(selectedTx.id);
                         try {
-                          await api.post(`/api/swarms/${swarmId}/transactions`, {
-                            template: selectedTx.template,
-                          });
+                          await api.post(
+                            `/api/swarms/${swarmId}/transactions`,
+                            {
+                              template: selectedTx.template,
+                            }
+                          );
                           setSelectedTx(null);
                           await fetchTransactions();
                           onResent?.();
                         } catch (err) {
                           console.error("Failed to resend transaction:", err);
-                          alert(err instanceof Error ? err.message : "Failed to resend transaction");
+                          alert(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to resend transaction"
+                          );
                         } finally {
                           setResendingId(null);
                         }
@@ -308,16 +358,41 @@ export default function TransactionHistory({
                     >
                       {resendingId === selectedTx.id ? (
                         <>
-                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
                           </svg>
                           Sending...
                         </>
                       ) : (
                         <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
                           </svg>
                           Resend Transaction
                         </>
@@ -386,7 +461,7 @@ export default function TransactionHistory({
                             <p>
                               Tx:{" "}
                               <a
-                                href={`https://sepolia.basescan.org/tx/${target.txHash}`}
+                                href={`https://basescan.org/tx/${target.txHash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline font-mono"
