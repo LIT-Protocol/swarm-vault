@@ -4,6 +4,7 @@
  */
 
 import SafeApiKitModule from "@safe-global/api-kit";
+import { hashSafeMessage } from "@safe-global/protocol-kit";
 import { type Address, keccak256, toBytes } from "viem";
 import { env } from "./env.js";
 
@@ -84,10 +85,13 @@ export async function validateSafeAddress(safeAddress: string): Promise<{
 /**
  * Check if a message has been signed by a SAFE
  * Uses the SAFE Transaction Service to check for off-chain signatures
+ *
+ * @param safeAddress - The Safe address
+ * @param message - The raw message string (will be hashed for lookup)
  */
 export async function checkSafeMessageSignature(
   safeAddress: string,
-  messageHash: string
+  message: string
 ): Promise<{
   signed: boolean;
   confirmations?: number;
@@ -97,13 +101,15 @@ export async function checkSafeMessageSignature(
   try {
     const apiKit = getSafeApiKit();
 
+    // Hash the message to get the Safe message hash for lookup
+    const messageHash = hashSafeMessage(message);
+
     // Try to get the message from SAFE Transaction Service
-    // The message hash is used to look up pending messages
-    const message = await apiKit.getMessage(messageHash);
+    const safeMessage = await apiKit.getMessage(messageHash);
 
     // Check if we have enough confirmations
     const safeInfo = await apiKit.getSafeInfo(safeAddress);
-    const confirmations = message.confirmations?.length || 0;
+    const confirmations = safeMessage.confirmations?.length || 0;
     const threshold = safeInfo.threshold;
 
     const signed = confirmations >= threshold;
@@ -112,7 +118,7 @@ export async function checkSafeMessageSignature(
       signed,
       confirmations,
       threshold,
-      signatures: message.confirmations?.map(c => c.signature) || [],
+      signatures: safeMessage.confirmations?.map(c => c.signature) || [],
     };
   } catch (error) {
     // If message not found, it hasn't been signed yet
@@ -133,9 +139,14 @@ export async function checkSafeMessageSignature(
 
 /**
  * Get the URL to sign a message in the SAFE app
+ *
+ * @param safeAddress - The Safe address
+ * @param message - The raw message string (will be hashed for the URL)
  */
-export function getSafeSignUrl(safeAddress: string, messageHash: string): string {
+export function getSafeSignUrl(safeAddress: string, message: string): string {
   const chainPrefix = env.CHAIN_ID === 8453 ? "base" : "basesep";
+  // Safe app expects the EIP-191 hash of the message in the URL
+  const messageHash = hashSafeMessage(message);
   return `https://app.safe.global/transactions/msg?safe=${chainPrefix}:${safeAddress}&messageHash=${messageHash}`;
 }
 
@@ -191,10 +202,13 @@ export async function proposeMessageToSafe(
 /**
  * Verify a SAFE signature on-chain (fallback method)
  * This is used if the Transaction Service is unavailable
+ *
+ * @param safeAddress - The Safe address
+ * @param message - The raw message string
  */
 export async function verifySafeSignatureOnChain(
   safeAddress: Address,
-  messageHash: string,
+  message: string,
   _rpcUrl: string // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<boolean> {
   try {
@@ -202,7 +216,7 @@ export async function verifySafeSignatureOnChain(
     // For now, we rely on the Transaction Service
     console.warn("[SAFE] On-chain verification not implemented, using Transaction Service");
 
-    const result = await checkSafeMessageSignature(safeAddress, messageHash);
+    const result = await checkSafeMessageSignature(safeAddress, message);
     return result.signed;
   } catch (error) {
     console.error("[SAFE] Error verifying signature on-chain:", error);
