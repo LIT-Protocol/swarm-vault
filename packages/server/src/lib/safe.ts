@@ -4,10 +4,17 @@
  */
 
 import SafeApiKitModule from "@safe-global/api-kit";
-import { hashSafeMessage } from "@safe-global/protocol-kit";
-import { type Address, keccak256, toBytes } from "viem";
+import Safe, { hashSafeMessage } from "@safe-global/protocol-kit";
+import {
+  type Address,
+  createPublicClient,
+  keccak256,
+  toBytes,
+  http,
+} from "viem";
 import { env } from "./env.js";
 import { EIP712TypedData } from "@safe-global/types-kit";
+import { base } from "viem/chains";
 
 // Handle ESM default export compatibility
 const SafeApiKit =
@@ -226,6 +233,10 @@ export function getSafeSignUrl(
   // Safe app expects the hash of the message in the URL
   // hashSafeMessage handles both string and EIP712TypedData
   const messageHash = hashSafeMessage(message);
+  // TODO: calculate safe message hash using protocol kit
+  // this doesn't work yet - we don't have protocolKit ready on the backend.
+  // once we come back to fixing SAFE sign-off, we should use this.
+  // const safeMessageHash = await protocolKit.getSafeMessageHash(messageHash);
   return `https://app.safe.global/transactions/msg?safe=${chainPrefix}:${safeAddress}&messageHash=${messageHash}`;
 }
 
