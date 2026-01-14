@@ -7,12 +7,11 @@ import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { CreateProposalSchema, ErrorCode } from "@swarm-vault/shared";
 import {
-  computeProposalMessageHash,
+  createProposalMessage,
   hashActionData,
   checkSafeMessageSignature,
   getSafeSignUrl,
   proposeMessageToSafe,
-  computeSafeMessageHash,
 } from "../lib/safe.js";
 import { executeSwapTransaction } from "../lib/swapExecutor.js";
 import { executeSwarmTransaction } from "../lib/transactionExecutor.js";
@@ -98,9 +97,9 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
     // Calculate expiration time
     const expiresAt = new Date(Date.now() + (expiresInHours || 24) * 60 * 60 * 1000);
 
-    // Compute the message hash for SAFE to sign
+    // Create the raw message for SAFE to sign (not pre-hashed)
     const actionDataHash = hashActionData(actionData);
-    const safeMessageHash = computeProposalMessageHash(
+    const safeMessage = createProposalMessage(
       swarmId,
       proposalId,
       actionType,
@@ -116,22 +115,17 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
         managerId: userId,
         actionType,
         actionData: actionData as object,
-        safeMessageHash,
+        safeMessageHash: safeMessage, // Store the raw message (not hashed)
         expiresAt,
       },
     });
 
     // Generate SAFE signing URL (will only work after the message is proposed)
-    const signUrl = getSafeSignUrl(swarm.safeAddress!, safeMessageHash);
-
-    // Compute the Safe-specific message hash that needs to be signed
-    // This is the EIP-712 hash that Safe expects signatures for
-    const safeSigningHash = await computeSafeMessageHash(swarm.safeAddress!, safeMessageHash);
+    const signUrl = getSafeSignUrl(swarm.safeAddress!, safeMessage);
 
     console.log(`[Proposals] Created proposal ${proposal.id} for swarm ${swarmId}`);
-    console.log(`[Proposals] Message hash: ${safeMessageHash}`);
-    console.log(`[Proposals] Safe signing hash: ${safeSigningHash}`);
-    console.log(`[Proposals] Manager must sign the safeSigningHash (as raw bytes) and call /api/proposals/${proposal.id}/propose-to-safe`);
+    console.log(`[Proposals] Raw message for signing: ${safeMessage}`);
+    console.log(`[Proposals] Client should use protocolKit.createMessage() with this raw message`);
 
     res.status(201).json({
       success: true,
@@ -139,8 +133,7 @@ router.post("/swarms/:id/proposals", authMiddleware, async (req: Request, res: R
         id: proposal.id,
         actionType: proposal.actionType,
         actionData: proposal.actionData,
-        safeMessageHash: proposal.safeMessageHash,
-        safeSigningHash, // The hash the user needs to sign (as raw bytes)
+        safeMessageHash: proposal.safeMessageHash, // Raw message string for client to sign
         status: proposal.status,
         proposedAt: proposal.proposedAt,
         expiresAt: proposal.expiresAt,
@@ -182,27 +175,22 @@ router.get("/swarms/:id/proposals", authMiddleware, async (req: Request, res: Re
       orderBy: { proposedAt: "desc" },
     });
 
-    // Generate sign URLs and signing hashes for pending proposals
-    const result = await Promise.all(
-      proposals.map(async (p) => ({
-        id: p.id,
-        actionType: p.actionType,
-        actionData: p.actionData,
-        safeMessageHash: p.safeMessageHash,
-        safeSigningHash: p.status === "PROPOSED" && swarm.safeAddress
-          ? await computeSafeMessageHash(swarm.safeAddress, p.safeMessageHash)
-          : undefined,
-        status: p.status,
-        proposedAt: p.proposedAt,
-        approvedAt: p.approvedAt,
-        executedAt: p.executedAt,
-        expiresAt: p.expiresAt,
-        executionTxId: p.executionTxId,
-        signUrl: p.status === "PROPOSED" && swarm.safeAddress
-          ? getSafeSignUrl(swarm.safeAddress, p.safeMessageHash)
-          : undefined,
-      }))
-    );
+    // Generate sign URLs for pending proposals
+    const result = proposals.map((p) => ({
+      id: p.id,
+      actionType: p.actionType,
+      actionData: p.actionData,
+      safeMessageHash: p.safeMessageHash, // Raw message string
+      status: p.status,
+      proposedAt: p.proposedAt,
+      approvedAt: p.approvedAt,
+      executedAt: p.executedAt,
+      expiresAt: p.expiresAt,
+      executionTxId: p.executionTxId,
+      signUrl: p.status === "PROPOSED" && swarm.safeAddress
+        ? getSafeSignUrl(swarm.safeAddress, p.safeMessageHash)
+        : undefined,
+    }));
 
     res.json({
       success: true,
@@ -765,6 +753,9 @@ router.post("/proposals/:id/propose-to-safe", authMiddleware, async (req: Reques
       });
       return;
     }
+
+    console.log(`[Proposals] Proposing message to SAFE for proposal ${id}`);
+    console.log(`[Proposals] Raw message: ${proposal.safeMessageHash}`);
 
     // Propose the message to SAFE Transaction Service with the signature
     const proposeResult = await proposeMessageToSafe(

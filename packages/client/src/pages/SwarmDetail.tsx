@@ -428,6 +428,7 @@ export default function SwarmDetail() {
             setProposalRefreshTrigger((n) => n + 1);
           }}
           requiresSafeSignoff={swarm.requireSafeSignoff}
+          safeAddress={swarm.safeAddress}
         />
       )}
 
@@ -459,6 +460,7 @@ export default function SwarmDetail() {
           <ProposalList
             swarmId={id!}
             requiresSafeSignoff={swarm.requireSafeSignoff || false}
+            safeAddress={swarm.safeAddress}
             refreshTrigger={proposalRefreshTrigger}
           />
         </div>

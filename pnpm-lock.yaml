@@ -23,6 +23,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@safe-global/protocol-kit':
+        specifier: ^5.1.0
+        version: 5.2.22(typescript@5.9.3)
       '@swarm-vault/shared':
         specifier: workspace:*
         version: link:../shared
@@ -3155,6 +3158,25 @@ packages:
       - zod
     dev: false
 
+  /@safe-global/protocol-kit@5.2.22(typescript@5.9.3):
+    resolution: {integrity: sha512-1oGYFDw8UUQqYGrGZw0Yy30v8jlMzvMidMd35HRM3hK/sAAbisUmHqER+KUV1Vvb2KX4c+dnkaw4ctjuMhajbA==}
+    dependencies:
+      '@safe-global/safe-deployments': 1.37.50
+      '@safe-global/safe-modules-deployments': 2.2.22
+      '@safe-global/types-kit': 1.0.5(typescript@5.9.3)
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.3.5)
+      semver: 7.7.3
+      viem: 2.43.5(typescript@5.9.3)
+    optionalDependencies:
+      '@noble/curves': 1.9.7
+      '@peculiar/asn1-schema': 2.6.0
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+    dev: false
+
   /@safe-global/protocol-kit@6.1.2(typescript@5.9.3)(zod@3.25.76):
     resolution: {integrity: sha512-cTpPdUAS2AMfGCkD1T601rQNjT0rtMQLA2TH7L/C+iFPAC6WrrDFop2B9lzeHjczlnVzrRpfFe4cL1bLrJ9NZw==}
     dependencies:
@@ -3211,6 +3233,15 @@ packages:
 
   /@safe-global/safe-modules-deployments@2.2.22:
     resolution: {integrity: sha512-HxVSX2F3yHvtwm85KlRpM4QXnnq1LDXZZKs5X2+Ip9DeQX+xXSRm9MjHED7ZdCdxXT/Sfga/2vmKsnoSU1t/lA==}
+    dev: false
+
+  /@safe-global/types-kit@1.0.5(typescript@5.9.3):
+    resolution: {integrity: sha512-LcAsApV1MDEEymw3ealYjFEoD+PoruPG7Ggt6eF+LX++OGFowMQAS+zK2d5sRReqFjxwUJzMGlS48aQKlQpfZg==}
+    dependencies:
+      abitype: 1.2.3(typescript@5.9.3)(zod@4.3.5)
+    transitivePeerDependencies:
+      - typescript
+      - zod
     dev: false
 
   /@safe-global/types-kit@3.0.0(typescript@5.9.3)(zod@3.25.76):

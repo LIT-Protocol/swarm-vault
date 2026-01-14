@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import type { ProposedActionStatus, ProposedActionType } from "@swarm-vault/shared";
-import { useSignMessage } from "wagmi";
+import { signSafeMessage } from "../lib/safeMessage";
 
 interface ProposalData {
   id: string;
@@ -14,8 +14,7 @@ interface ProposalData {
     slippagePercentage?: number;
     template?: unknown;
   };
-  safeMessageHash: string;
-  safeSigningHash?: string; // The EIP-712 hash to sign (as raw bytes)
+  safeMessageHash: string; // Raw message string for signing
   status: ProposedActionStatus;
   proposedAt: string;
   approvedAt: string | null;
@@ -28,12 +27,14 @@ interface ProposalData {
 interface ProposalListProps {
   swarmId: string;
   requiresSafeSignoff: boolean;
+  safeAddress?: string | null;
   refreshTrigger?: number;
 }
 
 export default function ProposalList({
   swarmId,
   requiresSafeSignoff,
+  safeAddress,
   refreshTrigger = 0,
 }: ProposalListProps) {
   const [proposals, setProposals] = useState<ProposalData[]>([]);
@@ -42,8 +43,6 @@ export default function ProposalList({
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [checkingStatusId, setCheckingStatusId] = useState<string | null>(null);
   const [signingId, setSigningId] = useState<string | null>(null);
-
-  const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
     if (requiresSafeSignoff) {
@@ -144,16 +143,22 @@ export default function ProposalList({
     try {
       setSigningId(proposal.id);
 
-      if (!proposal.safeSigningHash) {
-        alert("Error: Missing Safe signing hash. Please refresh the page.");
+      if (!safeAddress) {
+        alert("Error: Missing Safe address. Please refresh the page.");
         return;
       }
 
-      // Sign the Safe message hash as raw bytes
-      // This is the EIP-712 hash that Safe expects for off-chain message signing
-      const signature = await signMessageAsync({
-        message: { raw: proposal.safeSigningHash as `0x${string}` },
-      });
+      // Sign using Safe Protocol Kit's signMessage method
+      console.log("[ProposalList] Signing with Safe Protocol Kit...");
+      console.log("[ProposalList] Safe address:", safeAddress);
+      console.log("[ProposalList] Message (proposal hash):", proposal.safeMessageHash);
+
+      const signature = await signSafeMessage(
+        safeAddress,
+        proposal.safeMessageHash
+      );
+
+      console.log("[ProposalList] Signature:", signature);
 
       // Submit the signature to propose to SAFE
       const result = await api.post<{
@@ -161,7 +166,9 @@ export default function ProposalList({
         safeMessageHash: string;
         signUrl: string;
         message: string;
-      }>(`/api/proposals/${proposal.id}/propose-to-safe`, { signature });
+      }>(`/api/proposals/${proposal.id}/propose-to-safe`, {
+        signature,
+      });
 
       // Update the proposal's signUrl
       setProposals((prev) =>

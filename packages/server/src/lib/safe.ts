@@ -4,8 +4,7 @@
  */
 
 import SafeApiKitModule from "@safe-global/api-kit";
-import Safe, { hashSafeMessage } from "@safe-global/protocol-kit";
-import { type Address, keccak256, encodePacked, toBytes } from "viem";
+import { type Address, keccak256, toBytes } from "viem";
 import { env } from "./env.js";
 
 // Handle ESM default export compatibility
@@ -28,31 +27,23 @@ export function getSafeApiKit() {
 }
 
 /**
- * Compute the EIP-712 message hash for a proposal
- * This is what the SAFE needs to sign
+ * Create the raw message string for a proposal
+ * This is the message that will be signed by SAFE owners
+ *
+ * IMPORTANT: This returns a raw string (not hashed) because the Safe Protocol Kit
+ * will handle all the hashing internally when signing.
  */
-export function computeProposalMessageHash(
+export function createProposalMessage(
   swarmId: string,
   proposalId: string,
   actionType: string,
   actionDataHash: string,
   expiresAt: Date
 ): string {
-  // Create a deterministic hash from proposal data
-  // Using keccak256 of packed encoding
-  const message = encodePacked(
-    ["string", "string", "string", "string", "bytes32", "uint256"],
-    [
-      "SwarmVault Proposal",
-      swarmId,
-      proposalId,
-      actionType,
-      actionDataHash as `0x${string}`,
-      BigInt(Math.floor(expiresAt.getTime() / 1000)),
-    ]
-  );
-
-  return keccak256(message);
+  // Create a human-readable message that includes all proposal details
+  // The Safe SDK will hash this message according to EIP-191/EIP-712
+  const expiresAtUnix = Math.floor(expiresAt.getTime() / 1000);
+  return `SwarmVault Proposal Approval\n\nSwarm: ${swarmId}\nProposal: ${proposalId}\nAction: ${actionType}\nData Hash: ${actionDataHash}\nExpires: ${expiresAtUnix}`;
 }
 
 /**
@@ -146,49 +137,6 @@ export async function checkSafeMessageSignature(
 export function getSafeSignUrl(safeAddress: string, messageHash: string): string {
   const chainPrefix = env.CHAIN_ID === 8453 ? "base" : "basesep";
   return `https://app.safe.global/transactions/msg?safe=${chainPrefix}:${safeAddress}&messageHash=${messageHash}`;
-}
-
-/**
- * Get the RPC URL for the current chain
- */
-function getRpcUrl(): string {
-  // Use Alchemy RPC if available, otherwise use public RPC
-  const alchemyKey = process.env.ALCHEMY_API_KEY;
-  if (alchemyKey) {
-    const network = env.CHAIN_ID === 8453 ? "base-mainnet" : "base-sepolia";
-    return `https://${network}.g.alchemy.com/v2/${alchemyKey}`;
-  }
-  // Fallback to public RPC
-  return env.CHAIN_ID === 8453
-    ? "https://mainnet.base.org"
-    : "https://sepolia.base.org";
-}
-
-/**
- * Compute the Safe message hash that needs to be signed
- *
- * Uses the Safe Protocol Kit to compute the correct EIP-712 hash
- * that Safe expects for off-chain message signing.
- *
- * The user must sign this hash (as raw bytes using eth_sign) for Safe to accept the signature.
- */
-export async function computeSafeMessageHash(
-  safeAddress: string,
-  message: string
-): Promise<string> {
-  // Initialize Protocol Kit with the Safe address (read-only, no signer needed)
-  const protocolKit = await Safe.init({
-    provider: getRpcUrl(),
-    safeAddress: safeAddress,
-  });
-
-  // Step 1: Hash the message using Safe's method (EIP-191 hash)
-  const messageHash = hashSafeMessage(message);
-
-  // Step 2: Get the Safe-specific message hash (EIP-712 with domain separator)
-  const safeMessageHash = await protocolKit.getSafeMessageHash(messageHash);
-
-  return safeMessageHash;
 }
 
 /**

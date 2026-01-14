@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import { getTokensForChain, type TokenInfo } from "@swarm-vault/shared";
 import { formatUnits } from "viem";
-import { useSignMessage } from "wagmi";
+import { signSafeMessage } from "../lib/safeMessage";
 
 interface SwapFormProps {
   swarmId: string;
@@ -10,6 +10,7 @@ interface SwapFormProps {
   onClose: () => void;
   onSubmitted: () => void;
   requiresSafeSignoff?: boolean;
+  safeAddress?: string | null;
 }
 
 interface HoldingsData {
@@ -68,8 +69,7 @@ const chainId = parseInt(import.meta.env.VITE_CHAIN_ID || "84532");
 interface ProposalResult {
   id: string;
   actionType: string;
-  safeMessageHash: string;
-  safeSigningHash: string; // The EIP-712 hash to sign (as raw bytes)
+  safeMessageHash: string; // Raw message string for signing
   status: string;
   signUrl?: string;
 }
@@ -80,6 +80,7 @@ export default function SwapForm({
   onClose,
   onSubmitted,
   requiresSafeSignoff = false,
+  safeAddress,
 }: SwapFormProps) {
   const [step, setStep] = useState<"form" | "preview" | "executing" | "done">("form");
   const [proposalResult, setProposalResult] = useState<ProposalResult | null>(null);
@@ -159,8 +160,6 @@ export default function SwapForm({
     }
   };
 
-  const { signMessageAsync } = useSignMessage();
-
   const handleExecute = async () => {
     try {
       setIsExecuting(true);
@@ -168,6 +167,10 @@ export default function SwapForm({
       setError(null);
 
       if (requiresSafeSignoff) {
+        if (!safeAddress) {
+          throw new Error("SAFE address is required for SAFE sign-off");
+        }
+
         // Step 1: Create a proposal
         const result = await api.post<ProposalResult>(
           `/api/swarms/${swarmId}/proposals`,
@@ -184,13 +187,19 @@ export default function SwapForm({
           }
         );
 
-        // Step 2: Sign the Safe message hash to propose to SAFE
-        // We must sign the safeSigningHash as raw bytes (not as a string)
-        // This is the EIP-712 hash that Safe expects for off-chain message signing
+        // Step 2: Sign using Safe Protocol Kit's signMessage method
+        // This uses ETH_SIGN_TYPED_DATA_V4 which handles all the EIP-712 signing correctly
         try {
-          const signature = await signMessageAsync({
-            message: { raw: result.safeSigningHash as `0x${string}` },
-          });
+          console.log("[SwapForm] Signing with Safe Protocol Kit...");
+          console.log("[SwapForm] Safe address:", safeAddress);
+          console.log("[SwapForm] Message (proposal hash):", result.safeMessageHash);
+
+          const signature = await signSafeMessage(
+            safeAddress,
+            result.safeMessageHash
+          );
+
+          console.log("[SwapForm] Signature:", signature);
 
           // Step 3: Submit the signature to propose the message to SAFE
           const proposeResult = await api.post<{
@@ -198,7 +207,9 @@ export default function SwapForm({
             safeMessageHash: string;
             signUrl: string;
             message: string;
-          }>(`/api/proposals/${result.id}/propose-to-safe`, { signature });
+          }>(`/api/proposals/${result.id}/propose-to-safe`, {
+            signature,
+          });
 
           // Update the signUrl from the propose result
           result.signUrl = proposeResult.signUrl;
