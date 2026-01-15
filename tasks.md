@@ -533,9 +533,50 @@
 
 ---
 
+## Phase 15: API Documentation for Swarm Managers
+
+> **Goal:** Enable swarm managers to programmatically trade on behalf of their users via API. Managers should be able to give this documentation to an LLM and have it generate trading code for them.
+
+### 15.1 OpenAPI/Swagger Setup
+- [ ] Choose and install API documentation framework
+  - Options: `swagger-jsdoc` + `swagger-ui-express`, or `@scalar/express-api-reference`
+  - Scalar is recommended for modern, beautiful API docs with built-in playground
+- [ ] Configure OpenAPI spec generation from existing routes
+- [ ] Add OpenAPI annotations/JSDoc to all manager-relevant endpoints:
+  - Auth: `POST /api/auth/nonce`, `POST /api/auth/login`
+  - Swarms: `GET /api/swarms`, `POST /api/swarms`, `GET /api/swarms/:id`, `GET /api/swarms/:id/members`
+  - Transactions: `POST /api/swarms/:id/transactions`, `GET /api/swarms/:id/transactions`, `GET /api/transactions/:id`
+  - Swaps: `GET /api/swarms/:id/holdings`, `POST /api/swarms/:id/swap/preview`, `POST /api/swarms/:id/swap/execute`
+  - Balances: `GET /api/memberships/:id/balance`
+
+### 15.2 API Documentation Endpoint
+- [ ] Serve interactive API docs at `/api/docs` (or `/docs`)
+- [ ] Include authentication instructions (SIWE flow)
+- [ ] Document all request/response schemas with examples
+- [ ] Add code examples in multiple languages (curl, JavaScript, Python)
+
+### 15.3 Manager Trading Guide
+- [ ] Create dedicated "Programmatic Trading" section in docs:
+  - Authentication flow (get nonce → sign SIWE message → get JWT)
+  - How to fetch swarm holdings
+  - How to preview a swap (with example request/response)
+  - How to execute a swap
+  - How to check transaction status
+  - Template placeholders reference
+- [ ] Include "LLM-ready" prompt template that managers can copy-paste
+  - Contains API spec, auth instructions, and common operations
+- [ ] Document rate limits and best practices
+
+### 15.4 Testing & Validation
+- [ ] Verify all documented endpoints work as specified
+- [ ] Test API playground with real requests
+- [ ] Ensure JWT auth works correctly in playground
+
+---
+
 ## Future Phases (Post-MVP)
 
-### Phase 15: RainbowKit Integration
+### Phase 16: RainbowKit Integration
 - [ ] Replace custom wallet connection UI with RainbowKit
   - Handles wallet connection, disconnection, and reconnection reliably
   - Provides polished connect modal with multiple wallet options
@@ -545,17 +586,17 @@
 - [ ] Replace custom connect button with RainbowKit's ConnectButton
 - [ ] Update auth flow to work with RainbowKit's connection events
 
-### Phase 16: WalletConnect Integration
+### Phase 17: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 17: Transaction Simulation
+### Phase 18: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 18: Advanced Features
+### Phase 19: Advanced Features
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics
