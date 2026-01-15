@@ -6,23 +6,15 @@ import { useAuth } from "../contexts/AuthContext";
 
 export default function Layout() {
   const { address, isConnected } = useAccount();
-  const { connect, connectAsync, connectors, isPending: isConnecting, status, reset, error: connectError } = useConnect();
+  const { connect, connectAsync, connectors, isPending: isConnecting, status, reset } = useConnect();
   const { reconnect } = useReconnect();
   const { user, isAuthenticated, isLoading, error, login, logout } = useAuth();
   const pendingConnectRef = useRef(false);
   const pendingLoginRef = useRef(false);
 
-  // Debug: log state changes
-  useEffect(() => {
-    console.log('[Layout] State changed:', { isConnected, status, connectors: connectors.length, pendingConnect: pendingConnectRef.current, pendingLogin: pendingLoginRef.current, connectError: connectError?.message });
-  }, [isConnected, status, connectors, connectError]);
-
   // Auto-login after successful connect/reconnect
   useEffect(() => {
-    console.log('[Layout] Auto-login effect:', { isConnected, pendingLogin: pendingLoginRef.current, isAuthenticated, status });
-    // Trigger login when connected (regardless of status - the brief isConnected:true moment is enough)
     if (isConnected && pendingLoginRef.current && !isAuthenticated) {
-      console.log('[Layout] Connected with pending login, triggering login now');
       pendingLoginRef.current = false;
       login();
     }
@@ -30,42 +22,29 @@ export default function Layout() {
 
   // Handle connecting after reset completes
   useEffect(() => {
-    console.log('[Layout] Reset effect check:', { pendingConnect: pendingConnectRef.current, status, hasConnector: !!connectors[0] });
     if (pendingConnectRef.current && status === 'idle' && connectors[0]) {
-      console.log('[Layout] Triggering connect after reset');
       pendingConnectRef.current = false;
       connect({ connector: connectors[0] });
     }
   }, [status, connect, connectors]);
 
   const handleConnect = async () => {
-    console.log('[Layout] handleConnect called:', { isConnected, status, connectors: connectors.length });
-
     if (isConnected || status === 'pending') {
-      console.log('[Layout] Early return: isConnected or pending');
       return;
     }
 
-    // If in error state (e.g., "connector already connected"), try reconnect first
+    // If in error state, try reconnect first then reset if needed
     if (status === 'error') {
-      console.log('[Layout] In error state, trying reconnect with specific connector');
       try {
         pendingLoginRef.current = true;
-        // Pass the connector explicitly to reconnect
         const reconnectResult = await reconnect({ connectors: [connectors[0]] });
-        console.log('[Layout] Reconnect result (error state):', reconnectResult);
-        // reconnect() returns undefined or an array - check if we got connections
         if (!reconnectResult || reconnectResult.length === 0) {
-          console.log('[Layout] Reconnect returned empty/undefined, resetting');
           pendingLoginRef.current = false;
           pendingConnectRef.current = true;
           reset();
-        } else {
-          console.log('[Layout] Reconnect succeeded, pending login will trigger via useEffect');
         }
         return;
-      } catch (e) {
-        console.log('[Layout] Reconnect failed, resetting:', e);
+      } catch {
         pendingLoginRef.current = false;
         pendingConnectRef.current = true;
         reset();
@@ -75,55 +54,41 @@ export default function Layout() {
 
     // If in stale success state, reset first
     if (status === 'success') {
-      console.log('[Layout] Resetting stale success state');
       pendingConnectRef.current = true;
       reset();
       return;
     }
 
     // Normal connect (status is 'idle')
-    console.log('[Layout] Normal connect path, status is idle');
     if (connectors[0]) {
-      console.log('[Layout] Calling connect with connector:', connectors[0].name, connectors[0].id);
       pendingLoginRef.current = true;
 
       try {
-        console.log('[Layout] Trying fresh connect');
         await connectAsync({ connector: connectors[0] });
-        console.log('[Layout] Connect succeeded');
       } catch (e: unknown) {
         const errorMessage = e instanceof Error ? e.message : String(e);
-        console.log('[Layout] Connect failed:', errorMessage);
 
         // If "Connector already connected", the wallet is still authorized - request accounts directly
         if (errorMessage.includes('Connector already connected')) {
-          console.log('[Layout] Connector already connected, trying to get accounts directly from provider');
           try {
             // Access window.ethereum directly to trigger MetaMask
             const ethereum = window.ethereum as { request?: (args: { method: string }) => Promise<string[]> } | undefined;
             if (ethereum?.request) {
               const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-              console.log('[Layout] Got accounts from provider:', accounts);
               if (accounts && accounts.length > 0) {
                 // Now try reconnect - wagmi should pick up the active connection
-                console.log('[Layout] Accounts available, trying reconnect');
                 await reconnect({ connectors: [connectors[0]] });
-                console.log('[Layout] Reconnect after eth_requestAccounts completed');
               }
             } else {
-              console.log('[Layout] No ethereum provider found');
               pendingLoginRef.current = false;
             }
-          } catch (retryError) {
-            console.log('[Layout] Direct provider request failed:', retryError);
+          } catch {
             pendingLoginRef.current = false;
           }
         } else {
           pendingLoginRef.current = false;
         }
       }
-    } else {
-      console.log('[Layout] No connector available!');
     }
   };
 

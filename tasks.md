@@ -535,17 +535,27 @@
 
 ## Future Phases (Post-MVP)
 
-### Phase 15: WalletConnect Integration
+### Phase 15: RainbowKit Integration
+- [ ] Replace custom wallet connection UI with RainbowKit
+  - Handles wallet connection, disconnection, and reconnection reliably
+  - Provides polished connect modal with multiple wallet options
+  - Eliminates complex wagmi state management in Layout.tsx
+- [ ] Install `@rainbow-me/rainbowkit` package
+- [ ] Configure RainbowKitProvider with wagmi config
+- [ ] Replace custom connect button with RainbowKit's ConnectButton
+- [ ] Update auth flow to work with RainbowKit's connection events
+
+### Phase 16: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 16: Transaction Simulation
+### Phase 17: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 17: Advanced Features
+### Phase 18: Advanced Features
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics

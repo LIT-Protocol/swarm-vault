@@ -1320,6 +1320,47 @@ const permissionAccount = await deserializePermissionAccount(
 
 ---
 
+### Bug Fix: Wallet Reconnection After Logout
+
+**Completed:** 2026-01-15
+
+#### Problem
+
+After logging out and clicking "Connect Wallet" again, the wallet connection popup wouldn't appear. Users had to refresh the page.
+
+#### Root Cause
+
+wagmi's `disconnect()` clears wagmi's internal state but doesn't fully disconnect the injected provider (MetaMask). The wallet still considers the site authorized. When calling `connect()` again, wagmi throws "Connector already connected" error because the connector detects it's still connected at the provider level.
+
+Additionally, wagmi's `reconnect()` function only works if wagmi remembers the previous connection, which it doesn't after `disconnect()`.
+
+#### Solution
+
+When `connect()` fails with "Connector already connected":
+1. Access `window.ethereum` directly
+2. Call `eth_requestAccounts` to ensure the provider is active
+3. Use wagmi's `reconnect()` with the specific connector to sync wagmi's state
+4. Auto-trigger SIWE login via a `pendingLoginRef` flag and useEffect
+
+#### Key Code Pattern
+
+```typescript
+// In handleConnect when connect fails with "Connector already connected"
+const ethereum = window.ethereum as { request?: ... } | undefined;
+if (ethereum?.request) {
+  const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+  if (accounts && accounts.length > 0) {
+    await reconnect({ connectors: [connectors[0]] });
+  }
+}
+```
+
+#### Future Improvement
+
+Replace custom wallet connection with RainbowKit (Phase 15), which handles these edge cases automatically.
+
+---
+
 ## Project Status
 
 All 14 phases have been completed. The Swarm Vault MVP is now ready for deployment with:

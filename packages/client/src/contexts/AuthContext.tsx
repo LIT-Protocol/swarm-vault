@@ -129,12 +129,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [address, chainId, signMessageAsync]);
 
   const logout = useCallback(() => {
-    console.log('[AuthContext] logout called');
     localStorage.removeItem(STORAGE_KEY);
     api.setToken(null);
     setUser(null);
     setError(null);
-    console.log('[AuthContext] calling disconnect()');
     disconnect();
   }, [disconnect]);
 
