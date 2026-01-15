@@ -132,9 +132,23 @@ export default function TransactionHistory({
 
     setResendingId(tx.id);
     try {
-      await api.post(`/api/swarms/${swarmId}/transactions`, {
-        template: tx.template,
-      });
+      // Check if this is a swap transaction or a regular transaction
+      const template = tx.template as Record<string, unknown>;
+
+      if (template.type === "swap") {
+        // Swap transaction - call the swap execute endpoint
+        await api.post(`/api/swarms/${swarmId}/swap/execute`, {
+          sellToken: template.sellToken,
+          buyToken: template.buyToken,
+          sellPercentage: template.sellPercentage,
+          slippagePercentage: template.slippagePercentage,
+        });
+      } else {
+        // Regular transaction - call the transactions endpoint
+        await api.post(`/api/swarms/${swarmId}/transactions`, {
+          template: tx.template,
+        });
+      }
       // Refresh the list
       await fetchTransactions();
       onResent?.();
@@ -333,12 +347,26 @@ export default function TransactionHistory({
                         if (resendingId) return;
                         setResendingId(selectedTx.id);
                         try {
-                          await api.post(
-                            `/api/swarms/${swarmId}/transactions`,
-                            {
-                              template: selectedTx.template,
-                            }
-                          );
+                          // Check if this is a swap transaction or a regular transaction
+                          const template = selectedTx.template as Record<string, unknown>;
+
+                          if (template.type === "swap") {
+                            // Swap transaction - call the swap execute endpoint
+                            await api.post(`/api/swarms/${swarmId}/swap/execute`, {
+                              sellToken: template.sellToken,
+                              buyToken: template.buyToken,
+                              sellPercentage: template.sellPercentage,
+                              slippagePercentage: template.slippagePercentage,
+                            });
+                          } else {
+                            // Regular transaction - call the transactions endpoint
+                            await api.post(
+                              `/api/swarms/${swarmId}/transactions`,
+                              {
+                                template: selectedTx.template,
+                              }
+                            );
+                          }
                           setSelectedTx(null);
                           await fetchTransactions();
                           onResent?.();
