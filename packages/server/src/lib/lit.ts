@@ -113,14 +113,14 @@ export async function mintPKP(): Promise<{
     account,
   });
 
-  console.log(`[Lit] PKP minted successfully`);
+  console.log(`[Lit] PKP minted successfully, txHash: `, mintResult.txHash);
   console.log(`[Lit] Token ID: ${mintResult.data.tokenId}`);
-  console.log(`[Lit] Public Key: ${mintResult.data.publicKey}`);
+  console.log(`[Lit] Public Key: ${mintResult.data.pubkey}`);
   console.log(`[Lit] ETH Address: ${mintResult.data.ethAddress}`);
 
   return {
-    publicKey: mintResult.data.publicKey,
-    tokenId: mintResult.data.tokenId,
+    publicKey: mintResult.data.pubkey,
+    tokenId: mintResult.data.tokenId.toString(),
     ethAddress: mintResult.data.ethAddress,
   };
 }
