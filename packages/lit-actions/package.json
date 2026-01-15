@@ -11,7 +11,7 @@
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "devDependencies": {
-    "@lit-protocol/types": "^6.0.0",
+    "@lit-protocol/types": "^8.0.2",
     "esbuild": "^0.19.11",
     "typescript": "^5.3.3"
   }

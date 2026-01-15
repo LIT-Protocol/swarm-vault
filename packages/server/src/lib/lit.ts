@@ -1,179 +1,127 @@
-import { LitNodeClient } from "@lit-protocol/lit-node-client";
-import { LitContracts } from "@lit-protocol/contracts-sdk";
-import { LIT_NETWORK, type LIT_NETWORK_VALUES } from "@lit-protocol/constants";
-import {
-  LitAbility,
-  LitActionResource,
-  LitPKPResource,
-  createSiweMessage,
-  generateAuthSig,
-} from "@lit-protocol/auth-helpers";
-// Use ethers v5 packages for Lit SDK compatibility (Lit SDK uses ethers v5)
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { Wallet } from "@ethersproject/wallet";
+import { createLitClient, type LitClient } from "@lit-protocol/lit-client";
+import { createAuthManager, storagePlugins } from "@lit-protocol/auth";
+import { nagaDev, nagaTest, naga } from "@lit-protocol/networks";
+import { privateKeyToAccount } from "viem/accounts";
+import type { Hex } from "viem";
 import { env } from "./env.js";
 
-// Lit Chronicle Yellowstone RPC URL
-const LIT_RPC_URL = "https://yellowstone-rpc.litprotocol.com";
-
-// Get the Lit network from environment
-const getLitNetwork = (): LIT_NETWORK_VALUES => {
+// Get the network configuration based on environment
+function getLitNetwork() {
   const network = env.LIT_NETWORK;
-  if (network === "datil-dev") return LIT_NETWORK.DatilDev;
-  if (network === "datil-test") return LIT_NETWORK.DatilTest;
-  if (network === "datil") return LIT_NETWORK.Datil;
-  // Default to datil-dev for development
-  return LIT_NETWORK.DatilDev;
-};
+  if (network === "naga-dev") return nagaDev;
+  if (network === "naga-test") return nagaTest;
+  if (network === "naga") return naga;
+  // Default to naga-dev for development
+  return nagaDev;
+}
 
 // Singleton instances
-let litNodeClient: LitNodeClient | null = null;
-let litContracts: LitContracts | null = null;
+let litClient: LitClient | null = null;
+let authManager: ReturnType<typeof createAuthManager> | null = null;
 
 /**
- * Get or create the Lit Node Client singleton
+ * Get or create the Lit Client singleton
  */
-export async function getLitNodeClient(): Promise<LitNodeClient> {
-  if (litNodeClient && litNodeClient.ready) {
-    return litNodeClient;
+export async function getLitClient(): Promise<LitClient> {
+  if (litClient) {
+    return litClient;
   }
 
   const network = getLitNetwork();
-  console.log(`[Lit] Connecting to Lit Network: ${network}`);
+  console.log(`[Lit] Connecting to Lit Network: ${env.LIT_NETWORK}`);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  litNodeClient = new LitNodeClient({
-    litNetwork: network as any,
-    debug: env.NODE_ENV === "development",
+  litClient = await createLitClient({
+    network,
   });
 
-  await litNodeClient.connect();
   console.log("[Lit] Connected to Lit Network");
 
-  return litNodeClient;
+  return litClient;
 }
 
 /**
- * Get the subsidizing wallet from environment, connected to Lit network
+ * Get or create the Auth Manager singleton
  */
-function getSubsidizingWallet(): Wallet {
+function getAuthManager() {
+  if (authManager) {
+    return authManager;
+  }
+
+  authManager = createAuthManager({
+    storage: storagePlugins.localStorageNode({
+      appName: "swarm-vault",
+      networkName: env.LIT_NETWORK,
+      storagePath: "./.lit-auth-storage",
+    }),
+  });
+
+  return authManager;
+}
+
+/**
+ * Get the subsidizing wallet account from environment
+ */
+function getSubsidizingAccount() {
   if (!env.LIT_PRIVATE_KEY) {
     throw new Error("LIT_PRIVATE_KEY is required for PKP operations");
   }
-  // Create provider for Lit Chronicle Yellowstone network (using ethers v5)
-  const provider = new JsonRpcProvider(LIT_RPC_URL);
-  // Connect wallet to provider
-  return new Wallet(env.LIT_PRIVATE_KEY, provider);
+  return privateKeyToAccount(env.LIT_PRIVATE_KEY as Hex);
 }
 
 /**
- * Get or create the Lit Contracts SDK singleton
- * Used for PKP minting and management
+ * Get an EOA auth context using the subsidizing wallet
+ * Used for PKP minting and Lit Action execution
  */
-export async function getLitContracts(): Promise<LitContracts> {
-  if (litContracts) {
-    return litContracts;
-  }
+export async function getEoaAuthContext() {
+  const client = await getLitClient();
+  const manager = getAuthManager();
+  const account = getSubsidizingAccount();
 
-  const network = getLitNetwork();
-  const wallet = getSubsidizingWallet();
+  console.log(`[Lit] Creating EOA auth context for: ${account.address}`);
 
-  console.log(`[Lit] Initializing Lit Contracts for network: ${network}`);
-  console.log(`[Lit] Using subsidizing wallet: ${wallet.address}`);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  litContracts = new LitContracts({
-    signer: wallet,
-    network: network as any,
-    debug: env.NODE_ENV === "development",
-  });
-
-  await litContracts.connect();
-  console.log("[Lit] Lit Contracts SDK connected");
-
-  return litContracts;
-}
-
-// Type for session signatures map
-type SessionSigsMap = Record<
-  string,
-  { sig: string; derivedVia: string; signedMessage: string; address: string }
->;
-
-/**
- * Generate session signatures for PKP operations
- * Uses the subsidizing wallet to create auth signatures
- */
-export async function getSessionSigs(): Promise<SessionSigsMap> {
-  const client = await getLitNodeClient();
-  const wallet = getSubsidizingWallet();
-
-  // Get session signatures
-  const sessionSigs = await client.getSessionSigs({
-    chain: "ethereum",
-    expiration: new Date(Date.now() + 1000 * 60 * 60).toISOString(), // 1 hour
-    resourceAbilityRequests: [
-      {
-        resource: new LitPKPResource("*"),
-        ability: LitAbility.PKPSigning,
-      },
-      {
-        resource: new LitActionResource("*"),
-        ability: LitAbility.LitActionExecution,
-      },
-    ],
-    authNeededCallback: async ({
-      uri,
-      expiration,
-      resourceAbilityRequests,
-    }) => {
-      // Generate SIWE auth sig
-      const siweMessage = await createSiweMessage({
-        uri,
-        walletAddress: wallet.address,
-        nonce: await client.getLatestBlockhash(),
-        expiration: expiration,
-        resources: resourceAbilityRequests,
-        litNodeClient: client,
-      });
-
-      const authSig = await generateAuthSig({
-        signer: wallet,
-        toSign: siweMessage,
-      });
-
-      return authSig;
+  const authContext = await manager.createEoaAuthContext({
+    config: { account },
+    authConfig: {
+      resources: [
+        ["pkp-signing", "*"],
+        ["lit-action-execution", "*"],
+      ],
+      expiration: new Date(Date.now() + 1000 * 60 * 60).toISOString(), // 1 hour
     },
+    litClient: client,
   });
 
-  return sessionSigs as SessionSigsMap;
+  return authContext;
 }
 
 /**
  * Mint a new PKP for a swarm
- * Returns the PKP public key and token ID
+ * Returns the PKP public key, token ID, and ETH address
  */
 export async function mintPKP(): Promise<{
   publicKey: string;
   tokenId: string;
   ethAddress: string;
 }> {
-  const contracts = await getLitContracts();
+  const client = await getLitClient();
+  const account = getSubsidizingAccount();
 
   console.log("[Lit] Minting new PKP...");
 
-  // Mint a new PKP using the contracts SDK
-  const mintInfo = await contracts.pkpNftContractUtils.write.mint();
+  // Mint a new PKP using the litClient with EOA
+  const mintResult = await client.mintWithEoa({
+    account,
+  });
 
   console.log(`[Lit] PKP minted successfully`);
-  console.log(`[Lit] Token ID: ${mintInfo.pkp.tokenId}`);
-  console.log(`[Lit] Public Key: ${mintInfo.pkp.publicKey}`);
-  console.log(`[Lit] ETH Address: ${mintInfo.pkp.ethAddress}`);
+  console.log(`[Lit] Token ID: ${mintResult.data.tokenId}`);
+  console.log(`[Lit] Public Key: ${mintResult.data.publicKey}`);
+  console.log(`[Lit] ETH Address: ${mintResult.data.ethAddress}`);
 
   return {
-    publicKey: mintInfo.pkp.publicKey,
-    tokenId: mintInfo.pkp.tokenId,
-    ethAddress: mintInfo.pkp.ethAddress,
+    publicKey: mintResult.data.publicKey,
+    tokenId: mintResult.data.tokenId,
+    ethAddress: mintResult.data.ethAddress,
   };
 }
 
@@ -186,15 +134,15 @@ export async function executeLitAction(params: {
   ipfsId?: string;
   jsParams: Record<string, unknown>;
 }): Promise<{ signatures: Record<string, unknown>; response: unknown }> {
-  const client = await getLitNodeClient();
-  const sessionSigs = await getSessionSigs();
+  const client = await getLitClient();
+  const authContext = await getEoaAuthContext();
 
   console.log("[Lit] Executing Lit Action...");
 
   const result = await client.executeJs({
-    sessionSigs,
     code: params.litActionCode,
     ipfsId: params.ipfsId,
+    authContext,
     jsParams: params.jsParams,
   });
 
@@ -207,20 +155,58 @@ export async function executeLitAction(params: {
 }
 
 /**
- * Disconnect from Lit Network (for cleanup)
+ * Get a PKP Viem account for signing transactions
+ * This allows the PKP to be used as a viem account for signing
  */
-export async function disconnectLit(): Promise<void> {
-  if (litNodeClient) {
-    await litNodeClient.disconnect();
-    litNodeClient = null;
-    console.log("[Lit] Disconnected from Lit Network");
-  }
-  litContracts = null;
+export async function getPkpViemAccount(params: {
+  pkpPublicKey: string;
+  chainConfig: Parameters<LitClient["getPkpViemAccount"]>[0]["chainConfig"];
+}) {
+  const client = await getLitClient();
+  const manager = getAuthManager();
+  const account = getSubsidizingAccount();
+
+  // Create a PKP auth context
+  // First, get auth data from the EOA
+  const { ViemAccountAuthenticator } = await import("@lit-protocol/auth");
+  const authData = await ViemAccountAuthenticator.authenticate(account);
+
+  const pkpAuthContext = await manager.createPkpAuthContext({
+    authData,
+    pkpPublicKey: params.pkpPublicKey as `0x${string}`,
+    authConfig: {
+      resources: [
+        ["pkp-signing", "*"],
+        ["lit-action-execution", "*"],
+      ],
+      expiration: new Date(Date.now() + 1000 * 60 * 60).toISOString(), // 1 hour
+    },
+    litClient: client,
+  });
+
+  // Get the PKP viem account
+  const pkpViemAccount = await client.getPkpViemAccount({
+    pkpPublicKey: params.pkpPublicKey as `0x${string}`,
+    authContext: pkpAuthContext,
+    chainConfig: params.chainConfig,
+  });
+
+  return pkpViemAccount;
 }
 
 /**
  * Check if Lit client is connected
  */
 export function isLitConnected(): boolean {
-  return litNodeClient?.ready ?? false;
+  return litClient !== null;
+}
+
+/**
+ * Disconnect from Lit Network (for cleanup)
+ * Note: The new SDK may not have explicit disconnect, but we clear our singletons
+ */
+export async function disconnectLit(): Promise<void> {
+  litClient = null;
+  authManager = null;
+  console.log("[Lit] Cleared Lit client instances");
 }

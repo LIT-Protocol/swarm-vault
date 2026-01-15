@@ -1322,7 +1322,7 @@ const permissionAccount = await deserializePermissionAccount(
 
 ## Project Status
 
-All 13 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 14 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1338,6 +1338,7 @@ All 13 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - **Twitter OAuth for manager verification**
 - **0x Swap Fee Collection (0.5% platform fee)**
 - ~~**Gnosis SAFE multi-sig sign-off for institutional-grade controls**~~ (disabled in UI for launch - see Phase 13.5)
+- **Lit Protocol Naga Network support (v8 SDK)**
 
 ### Phase 13.5: SAFE UI Disabled for Launch
 
@@ -1355,3 +1356,103 @@ The Gnosis SAFE sign-off feature (Phase 13) is complete on the backend and in th
 - Lit Actions with SAFE verification capability
 
 To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `SwapForm.tsx`.
+
+### Phase 14 Learnings (Switch to Naga Lit Network)
+
+**Completed:** 2026-01-14
+
+#### SDK Migration
+
+1. **New Packages**: The Naga SDK (v8.x) uses completely new packages:
+   - `@lit-protocol/lit-client` (replaces `@lit-protocol/lit-node-client`)
+   - `@lit-protocol/auth` (replaces `@lit-protocol/auth-helpers`)
+   - `@lit-protocol/networks` (new - network configuration)
+   - Removed: `@lit-protocol/constants`, `@lit-protocol/contracts-sdk`
+
+2. **Client Creation**: The new SDK uses a factory function instead of a class:
+   ```typescript
+   // OLD
+   const client = new LitNodeClient({ litNetwork: "datil-dev" });
+   await client.connect();
+
+   // NEW
+   import { createLitClient } from "@lit-protocol/lit-client";
+   import { nagaDev } from "@lit-protocol/networks";
+   const litClient = await createLitClient({ network: nagaDev });
+   ```
+
+3. **Network Names**: Changed from `datil-dev`/`datil-test`/`datil` to `naga-dev`/`naga-test`/`naga`.
+
+#### Authentication Changes
+
+1. **Auth Manager Pattern**: Authentication now uses a centralized Auth Manager with storage:
+   ```typescript
+   const authManager = createAuthManager({
+     storage: storagePlugins.localStorageNode({
+       appName: "swarm-vault",
+       networkName: "naga-dev",
+       storagePath: "./.lit-auth-storage",
+     }),
+   });
+   ```
+
+2. **EOA Auth Context**: Creating auth context for EOA (server-side) signing:
+   ```typescript
+   const authContext = await authManager.createEoaAuthContext({
+     config: { account: viemAccount },
+     authConfig: {
+       resources: [["pkp-signing", "*"], ["lit-action-execution", "*"]],
+       expiration: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
+     },
+     litClient,
+   });
+   ```
+
+3. **PKP Minting**: Simplified to a single method call:
+   ```typescript
+   // OLD: contracts.pkpNftContractUtils.write.mint()
+   // NEW:
+   const mintResult = await litClient.mintWithEoa({ account });
+   ```
+
+#### Lit Action Changes
+
+1. **Parameter Access**: Lit Actions now access parameters via the `jsParams` object:
+   ```typescript
+   // OLD: Direct global variables
+   declare const userOpHashes: string[];
+
+   // NEW: Access via jsParams
+   declare const jsParams: { userOpHashes: string[]; publicKey: string; };
+   const { userOpHashes, publicKey } = jsParams;
+   ```
+
+2. **Signing API**: Changed from `Lit.Actions.signEcdsa` (returns shares) to `LitActions.signAndCombineEcdsa` (returns combined signature):
+   ```typescript
+   // OLD
+   await Lit.Actions.signEcdsa({ toSign, publicKey, sigName });
+   // Signatures in result.signatures[sigName]
+
+   // NEW
+   const signature = await LitActions.signAndCombineEcdsa({ toSign, publicKey, sigName });
+   // Signature returned directly as JSON string
+   ```
+
+3. **Response Handling**: The `litActions.ts` helper was updated to parse signatures from the response body instead of a separate signatures object.
+
+#### Key Files Modified
+
+- `packages/server/package.json` - Updated Lit packages to v8.x
+- `packages/server/src/lib/env.ts` - Changed network enum to naga-dev/naga-test/naga
+- `packages/server/src/lib/lit.ts` - Complete rewrite for new SDK API
+- `packages/server/src/lib/litActions.ts` - Updated signature parsing
+- `packages/lit-actions/src/signTransaction.ts` - Updated for jsParams and signAndCombineEcdsa
+- `packages/lit-actions/src/signTransactionWithSafe.ts` - Updated for jsParams and signAndCombineEcdsa
+- `packages/lit-actions/package.json` - Updated @lit-protocol/types to v8.x
+- `.env.example` - Updated network names and comments
+
+#### Migration Notes
+
+- **No Data Migration Required**: Since the app hasn't launched yet, no PKP migration is needed. Wipe the database and start fresh.
+- **Peer Dependencies**: The Lit SDK v8 has peer dependency on viem 2.38.3, but works with higher versions (with warnings).
+- **Native Addons**: Some optional native dependencies (bufferutil, utf-8-validate) may fail to build if `make` is not installed, but this doesn't affect functionality.

@@ -41,6 +41,34 @@ function getSignWithSafeCode(): string {
 }
 
 /**
+ * Parse a combined signature string from signAndCombineEcdsa
+ * The signature is returned as a JSON string with r, s, and recid
+ */
+function parseSignature(signatureJson: string): {
+  r: string;
+  s: string;
+  v: number;
+  signature: string;
+} {
+  const parsed = JSON.parse(signatureJson);
+
+  // V value is recid + 27 for Ethereum
+  const v = parsed.recid + 27;
+
+  // Ensure r and s have 0x prefix
+  const r = parsed.r.startsWith("0x") ? parsed.r : `0x${parsed.r}`;
+  const s = parsed.s.startsWith("0x") ? parsed.s : `0x${parsed.s}`;
+
+  // Combine into full signature (r + s + v)
+  const rHex = r.slice(2).padStart(64, "0");
+  const sHex = s.slice(2).padStart(64, "0");
+  const vHex = v.toString(16).padStart(2, "0");
+  const fullSig = `0x${rHex}${sHex}${vHex}`;
+
+  return { r, s, v, signature: fullSig };
+}
+
+/**
  * Sign multiple UserOperation hashes using a PKP
  *
  * @param pkpPublicKey - The PKP public key to sign with
@@ -76,7 +104,6 @@ export async function signUserOperations(
     });
 
     // Parse the response from the Lit Action
-    // Note: Lit SDK may return the response already parsed as an object
     const response =
       typeof result.response === "string"
         ? JSON.parse(result.response)
@@ -90,39 +117,19 @@ export async function signUserOperations(
       };
     }
 
-    // Extract and format signatures
+    // Extract and format signatures from the response
+    // With signAndCombineEcdsa, signatures are returned in the response
     const signatures: Record<
       string,
       { r: string; s: string; v: number; signature: string }
     > = {};
 
-    for (const sigName of response.signatures) {
-      const sig = result.signatures[sigName];
-      if (sig) {
-        // The signature object from Lit contains r, s, and recid (v)
-        const sigData = sig as {
-          r: string;
-          s: string;
-          recid: number;
-          signature: string;
-        };
-
-        // V value is recid + 27 for Ethereum
-        const v = sigData.recid + 27;
-
-        // Combine into full signature
-        const r = sigData.r.startsWith("0x") ? sigData.r : `0x${sigData.r}`;
-        const s = sigData.s.startsWith("0x") ? sigData.s : `0x${sigData.s}`;
-        const fullSig = sigData.signature.startsWith("0x")
-          ? sigData.signature
-          : `0x${sigData.signature}`;
-
-        signatures[sigName] = {
-          r,
-          s,
-          v,
-          signature: fullSig,
-        };
+    for (const sigData of response.signatures) {
+      const { sigName, signature: signatureJson } = sigData;
+      try {
+        signatures[sigName] = parseSignature(signatureJson);
+      } catch (parseError) {
+        console.error(`[LitActions] Error parsing signature ${sigName}:`, parseError);
       }
     }
 
@@ -238,35 +245,18 @@ export async function signUserOperationsWithSafe(
       };
     }
 
-    // Extract and format signatures
+    // Extract and format signatures from the response
     const signatures: Record<
       string,
       { r: string; s: string; v: number; signature: string }
     > = {};
 
-    for (const sigName of response.signatures) {
-      const sig = result.signatures[sigName];
-      if (sig) {
-        const sigData = sig as {
-          r: string;
-          s: string;
-          recid: number;
-          signature: string;
-        };
-
-        const v = sigData.recid + 27;
-        const r = sigData.r.startsWith("0x") ? sigData.r : `0x${sigData.r}`;
-        const s = sigData.s.startsWith("0x") ? sigData.s : `0x${sigData.s}`;
-        const fullSig = sigData.signature.startsWith("0x")
-          ? sigData.signature
-          : `0x${sigData.signature}`;
-
-        signatures[sigName] = {
-          r,
-          s,
-          v,
-          signature: fullSig,
-        };
+    for (const sigData of response.signatures) {
+      const { sigName, signature: signatureJson } = sigData;
+      try {
+        signatures[sigName] = parseSignature(signatureJson);
+      } catch (parseError) {
+        console.error(`[LitActions] Error parsing signature ${sigName}:`, parseError);
       }
     }
 

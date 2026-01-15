@@ -14,39 +14,34 @@
  *
  * If safeAddress is provided, the action will verify SAFE approval before signing.
  *
- * Returns via Lit.Actions.setResponse:
+ * Returns via LitActions.setResponse:
  * - success: boolean
- * - signatures: Array of signature names for retrieval
+ * - signatures: Array of signature objects
  * - error: string (if failed)
  */
 
-// Lit Action global declarations
-declare const Lit: {
-  Actions: {
-    signEcdsa: (params: {
-      toSign: Uint8Array;
-      publicKey: string;
-      sigName: string;
-    }) => Promise<void>;
-    setResponse: (params: { response: string }) => void;
-    call: (params: {
-      ipfsId?: string;
-      code?: string;
-      jsParams: Record<string, unknown>;
-    }) => Promise<unknown>;
-  };
+// Lit Action global declarations for Naga SDK
+declare const LitActions: {
+  signAndCombineEcdsa: (params: {
+    toSign: Uint8Array;
+    publicKey: string;
+    sigName: string;
+  }) => Promise<string>;
+  setResponse: (params: { response: string }) => void;
 };
 
-// Globals for fetch (available in Lit Actions via Deno)
+// Globals for fetch (available in Lit Actions)
 declare const fetch: typeof globalThis.fetch;
 
-// Input parameters injected by the backend
-declare const userOpHashes: string[];
-declare const publicKey: string;
-declare const safeAddress: string | undefined;
-declare const proposalHash: string | undefined;
-declare const apiUrl: string | undefined;
-declare const proposalId: string | undefined;
+// jsParams object containing all input parameters
+declare const jsParams: {
+  userOpHashes: string[];
+  publicKey: string;
+  safeAddress?: string;
+  proposalHash?: string;
+  apiUrl?: string;
+  proposalId?: string;
+};
 
 /**
  * Convert a hex string to Uint8Array
@@ -64,10 +59,16 @@ function hexToBytes(hex: string): Uint8Array {
  * Verify SAFE has signed the proposal
  * This fetches the proposal status from the API and checks if SAFE has approved
  */
-async function verifySafeApproval(): Promise<{
+async function verifySafeApproval(params: {
+  safeAddress?: string;
+  proposalId?: string;
+  apiUrl?: string;
+}): Promise<{
   verified: boolean;
   error?: string;
 }> {
+  const { safeAddress, proposalId, apiUrl } = params;
+
   if (!safeAddress || !proposalId || !apiUrl) {
     // No SAFE verification required
     return { verified: true };
@@ -84,7 +85,7 @@ async function verifySafeApproval(): Promise<{
       };
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       success: boolean;
       data?: {
         status: string;
@@ -121,9 +122,12 @@ async function verifySafeApproval(): Promise<{
  * Main Lit Action execution
  */
 (async () => {
+  // Access parameters via jsParams
+  const { userOpHashes, publicKey, safeAddress, proposalId, apiUrl } = jsParams;
+
   // Validate basic inputs
   if (!userOpHashes || !Array.isArray(userOpHashes)) {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: "userOpHashes must be an array of hex strings",
@@ -133,7 +137,7 @@ async function verifySafeApproval(): Promise<{
   }
 
   if (!publicKey || typeof publicKey !== "string") {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: "publicKey is required",
@@ -144,10 +148,14 @@ async function verifySafeApproval(): Promise<{
 
   // If SAFE address is provided, verify SAFE approval before signing
   if (safeAddress) {
-    const safeVerification = await verifySafeApproval();
+    const safeVerification = await verifySafeApproval({
+      safeAddress,
+      proposalId,
+      apiUrl,
+    });
 
     if (!safeVerification.verified) {
-      Lit.Actions.setResponse({
+      LitActions.setResponse({
         response: JSON.stringify({
           success: false,
           error: safeVerification.error || "SAFE approval required but not verified",
@@ -161,6 +169,7 @@ async function verifySafeApproval(): Promise<{
   const signatures: Array<{
     index: number;
     sigName: string;
+    signature: string;
   }> = [];
 
   try {
@@ -181,8 +190,8 @@ async function verifySafeApproval(): Promise<{
       // Create unique signature name for this operation
       const sigName = `sig_${i}`;
 
-      // Sign the hash with the PKP
-      await Lit.Actions.signEcdsa({
+      // Sign the hash with the PKP using signAndCombineEcdsa
+      const signature = await LitActions.signAndCombineEcdsa({
         toSign: hashBytes,
         publicKey,
         sigName,
@@ -191,20 +200,24 @@ async function verifySafeApproval(): Promise<{
       signatures.push({
         index: i,
         sigName,
+        signature,
       });
     }
 
-    // Return success response
-    Lit.Actions.setResponse({
+    // Return success response with combined signatures
+    LitActions.setResponse({
       response: JSON.stringify({
         success: true,
         signedCount: signatures.length,
-        signatures: signatures.map((s) => s.sigName),
+        signatures: signatures.map((s) => ({
+          sigName: s.sigName,
+          signature: s.signature,
+        })),
         safeVerified: !!safeAddress,
       }),
     });
   } catch (error) {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

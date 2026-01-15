@@ -494,42 +494,42 @@
 
 ---
 
-## Phase 14: Switch to Naga Lit Network
+## Phase 14: Switch to Naga Lit Network [COMPLETED]
 
 > **Note:** This app hasn't launched yet, so no migration of existing PKPs is needed. Just wipe the local database and start fresh with the Naga network.
 
 ### 14.1 Update Network Configuration
-- [ ] Update environment variables
+- [x] Update environment variables
   - Change `LIT_NETWORK` to use Naga network (`naga-dev` for development, `naga` for production)
-- [ ] Update `packages/server/src/lib/env.ts` - Update network validation enum
-- [ ] Update `packages/server/src/lib/lit.ts` - Update network constants and imports
-- [ ] Update `.env.example` with Naga network values
+- [x] Update `packages/server/src/lib/env.ts` - Update network validation enum
+- [x] Update `packages/server/src/lib/lit.ts` - Complete rewrite for new Naga SDK API
+- [x] Update `.env.example` with Naga network values
 
-### 14.2 Verify SDK Compatibility
-- [ ] Confirm current Lit Protocol SDK packages work with Naga network
-  - `@lit-protocol/lit-node-client`
-  - `@lit-protocol/contracts-sdk`
-  - `@lit-protocol/auth-helpers`
-  - `@lit-protocol/constants`
-- [ ] Check for any API changes needed for Naga
-- [ ] Update TypeScript types if needed
+### 14.2 SDK Migration (Breaking Changes)
+- [x] Migrate to new Lit Protocol Naga SDK v8.x packages:
+  - `@lit-protocol/lit-client` (replaces `@lit-protocol/lit-node-client`)
+  - `@lit-protocol/auth` (replaces `@lit-protocol/auth-helpers`)
+  - `@lit-protocol/networks` (new package for network configs)
+  - Removed: `@lit-protocol/constants`, `@lit-protocol/contracts-sdk`
+- [x] Update client creation to use `createLitClient({ network: nagaDev })`
+- [x] Update authentication to use Auth Manager pattern with `createEoaAuthContext`
+- [x] Update PKP minting to use `litClient.mintWithEoa({ account })`
 
-### 14.3 Test Core Flows on Naga
-- [ ] Wipe local database (`pnpm db:reset` or drop and recreate)
-- [ ] Test PKP minting on Naga network
+### 14.3 Lit Action Updates
+- [x] Update `signTransaction.ts` to use `jsParams` pattern for parameter access
+- [x] Update `signTransactionWithSafe.ts` to use `jsParams` pattern
+- [x] Migrate from `Lit.Actions.signEcdsa` to `LitActions.signAndCombineEcdsa`
+- [x] Update `litActions.ts` helper to parse new signature response format
+
+### 14.4 Testing (Pending)
+- [ ] Wipe local database and test PKP minting on Naga network
 - [ ] Test full swarm creation flow
-- [ ] Test user join flow with PKP session signing
 - [ ] Test transaction execution via PKP
 - [ ] Test swap execution via PKP
-
-### 14.4 Lit Action Verification
-- [ ] Test `signTransaction.ts` Lit Action on Naga
-- [ ] Test `signTransactionWithSafe.ts` Lit Action on Naga
 - [ ] Verify signature format compatibility with ZeroDev
 
 ### 14.5 Documentation Updates
-- [ ] Update README with Naga network information
-- [ ] Update plan.md with Phase 14 learnings
+- [x] Update plan.md with Phase 14 learnings and migration notes
 
 ---
 

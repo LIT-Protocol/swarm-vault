@@ -8,25 +8,25 @@
  * - userOpHashes: Array of hex strings representing UserOperation hashes to sign
  * - publicKey: The PKP public key (compressed, hex string)
  *
- * Returns via Lit.Actions.setResponse:
- * - signatures: Array of { r, s, v } signature objects
+ * Returns via LitActions.setResponse:
+ * - signatures: Array of signature objects with r, s, v values
  */
 
-// Lit Action global declarations
-declare const Lit: {
-  Actions: {
-    signEcdsa: (params: {
-      toSign: Uint8Array;
-      publicKey: string;
-      sigName: string;
-    }) => Promise<void>;
-    setResponse: (params: { response: string }) => void;
-  };
+// Lit Action global declarations for Naga SDK
+declare const LitActions: {
+  signAndCombineEcdsa: (params: {
+    toSign: Uint8Array;
+    publicKey: string;
+    sigName: string;
+  }) => Promise<string>;
+  setResponse: (params: { response: string }) => void;
 };
 
-// Input parameters injected by the backend
-declare const userOpHashes: string[];
-declare const publicKey: string;
+// jsParams object containing all input parameters
+declare const jsParams: {
+  userOpHashes: string[];
+  publicKey: string;
+};
 
 /**
  * Convert a hex string to Uint8Array
@@ -44,9 +44,12 @@ function hexToBytes(hex: string): Uint8Array {
  * Main Lit Action execution
  */
 (async () => {
+  // Access parameters via jsParams
+  const { userOpHashes, publicKey } = jsParams;
+
   // Validate inputs
   if (!userOpHashes || !Array.isArray(userOpHashes)) {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: "userOpHashes must be an array of hex strings",
@@ -56,7 +59,7 @@ function hexToBytes(hex: string): Uint8Array {
   }
 
   if (!publicKey || typeof publicKey !== "string") {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: "publicKey is required",
@@ -68,6 +71,7 @@ function hexToBytes(hex: string): Uint8Array {
   const signatures: Array<{
     index: number;
     sigName: string;
+    signature: string;
   }> = [];
 
   try {
@@ -88,8 +92,9 @@ function hexToBytes(hex: string): Uint8Array {
       // Create unique signature name for this operation
       const sigName = `sig_${i}`;
 
-      // Sign the hash with the PKP
-      await Lit.Actions.signEcdsa({
+      // Sign the hash with the PKP using signAndCombineEcdsa
+      // This combines signature shares within the Lit Action
+      const signature = await LitActions.signAndCombineEcdsa({
         toSign: hashBytes,
         publicKey,
         sigName,
@@ -98,21 +103,23 @@ function hexToBytes(hex: string): Uint8Array {
       signatures.push({
         index: i,
         sigName,
+        signature,
       });
     }
 
-    // Return success response
-    // Note: The actual signature values are accessible via the sigName
-    // in the executeJs response.signatures object
-    Lit.Actions.setResponse({
+    // Return success response with combined signatures
+    LitActions.setResponse({
       response: JSON.stringify({
         success: true,
         signedCount: signatures.length,
-        signatures: signatures.map((s) => s.sigName),
+        signatures: signatures.map((s) => ({
+          sigName: s.sigName,
+          signature: s.signature,
+        })),
       }),
     });
   } catch (error) {
-    Lit.Actions.setResponse({
+    LitActions.setResponse({
       response: JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
