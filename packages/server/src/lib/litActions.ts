@@ -42,7 +42,8 @@ function getSignWithSafeCode(): string {
 
 /**
  * Parse a combined signature string from signAndCombineEcdsa
- * The signature is returned as a JSON string with r, s, and recid
+ * The signature is returned as a JSON string with r, s, and recovery parameter
+ * The recovery parameter can be named: recid, recoveryParam, or v
  */
 function parseSignature(signatureJson: string): {
   r: string;
@@ -52,18 +53,55 @@ function parseSignature(signatureJson: string): {
 } {
   const parsed = JSON.parse(signatureJson);
 
-  // V value is recid + 27 for Ethereum
-  const v = parsed.recid + 27;
+  console.log("[LitActions] Raw signature from Lit Action:", JSON.stringify(parsed, null, 2));
 
-  // Ensure r and s have 0x prefix
-  const r = parsed.r.startsWith("0x") ? parsed.r : `0x${parsed.r}`;
-  const s = parsed.s.startsWith("0x") ? parsed.s : `0x${parsed.s}`;
+  // Get recovery parameter - it can be named differently
+  let recoveryParam: number;
+  if (typeof parsed.recid === "number") {
+    recoveryParam = parsed.recid;
+  } else if (typeof parsed.recoveryParam === "number") {
+    recoveryParam = parsed.recoveryParam;
+  } else if (typeof parsed.v === "number") {
+    // v is already in Ethereum format (27 or 28)
+    recoveryParam = parsed.v >= 27 ? parsed.v - 27 : parsed.v;
+  } else {
+    // Try parsing as string
+    const recidStr = parsed.recid ?? parsed.recoveryParam ?? parsed.v;
+    if (recidStr !== undefined) {
+      const numVal = Number(recidStr);
+      recoveryParam = numVal >= 27 ? numVal - 27 : numVal;
+    } else {
+      console.error("[LitActions] No recovery parameter found in signature:", parsed);
+      throw new Error("No recovery parameter (recid/recoveryParam/v) found in signature");
+    }
+  }
+
+  // V value is recid + 27 for Ethereum
+  const v = recoveryParam + 27;
+
+  // Handle r - might have 0x prefix or not, might have extra leading zeros
+  let rHex = parsed.r;
+  if (rHex.startsWith("0x")) {
+    rHex = rHex.slice(2);
+  }
+  // Ensure 64 hex chars (32 bytes)
+  rHex = rHex.padStart(64, "0");
+  const r = `0x${rHex}`;
+
+  // Handle s - might have 0x prefix or not
+  let sHex = parsed.s;
+  if (sHex.startsWith("0x")) {
+    sHex = sHex.slice(2);
+  }
+  // Ensure 64 hex chars (32 bytes)
+  sHex = sHex.padStart(64, "0");
+  const s = `0x${sHex}`;
 
   // Combine into full signature (r + s + v)
-  const rHex = r.slice(2).padStart(64, "0");
-  const sHex = s.slice(2).padStart(64, "0");
   const vHex = v.toString(16).padStart(2, "0");
   const fullSig = `0x${rHex}${sHex}${vHex}`;
+
+  console.log(`[LitActions] Parsed signature - r: ${r}, s: ${s}, v: ${v}, full: ${fullSig}`);
 
   return { r, s, v, signature: fullSig };
 }
