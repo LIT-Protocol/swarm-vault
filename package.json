@@ -11,6 +11,8 @@
     "test:coverage": "pnpm -r test:coverage",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:status": "bash ./scripts/db/migrate-status.sh",
+    "db:deploy": "bash ./scripts/db/migrate-deploy.sh",
     "db:push": "prisma db push",
     "db:seed": "pnpm --filter @swarm-vault/server db:seed"
   },

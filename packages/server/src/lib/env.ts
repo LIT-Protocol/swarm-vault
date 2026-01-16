@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-// Heroku addon SchemaToGo uses SCHEMATOGO_URL instead of DATABASE_URL
-if (!process.env.DATABASE_URL && process.env.SCHEMATOGO_URL) {
-  process.env.DATABASE_URL = process.env.SCHEMATOGO_URL;
-}
-
 const envSchema = z.object({
   DATABASE_URL: z.string(),
   LIT_NETWORK: z.enum(["naga-dev", "naga-test", "naga"]).default("naga-dev"),
@@ -15,13 +10,18 @@ const envSchema = z.object({
   ZEROX_API_KEY: z.string().optional(),
   JWT_SECRET: z.string().min(32),
   PORT: z.coerce.number().default(3001),
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   // Twitter OAuth 2.0
   TWITTER_CLIENT_ID: z.string().optional(),
   TWITTER_CLIENT_SECRET: z.string().optional(),
   TWITTER_CALLBACK_URL: z.string().url().optional(),
   // Swap Fee Collection
-  SWAP_FEE_RECIPIENT: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+  SWAP_FEE_RECIPIENT: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/)
+    .optional(),
   SWAP_FEE_BPS: z.coerce.number().min(0).max(1000).default(50), // Default 50 bps = 0.5%
   // Safe Global API
   SAFE_API_KEY: z.string().optional(),
