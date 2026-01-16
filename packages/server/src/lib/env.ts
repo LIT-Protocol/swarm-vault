@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Heroku addon SchemaToGo uses SCHEMATOGO_URL instead of DATABASE_URL
+if (!process.env.DATABASE_URL && process.env.SCHEMATOGO_URL) {
+  process.env.DATABASE_URL = process.env.SCHEMATOGO_URL;
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.string(),
   LIT_NETWORK: z.enum(["naga-dev", "naga-test", "naga"]).default("naga-dev"),
