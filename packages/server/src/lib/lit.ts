@@ -17,7 +17,9 @@ function getLitNetwork() {
 
 // Singleton instances
 let litClient: LitClient | null = null;
-let authManager: ReturnType<typeof createAuthManager> | null = null;
+type AuthManager = ReturnType<typeof createAuthManager>;
+let authManager: AuthManager | null = null;
+export type EoaAuthContext = Awaited<ReturnType<AuthManager["createEoaAuthContext"]>>;
 
 /**
  * Get or create the Lit Client singleton
@@ -72,7 +74,7 @@ function getSubsidizingAccount() {
  * Get an EOA auth context using the subsidizing wallet
  * Used for PKP minting and Lit Action execution
  */
-export async function getEoaAuthContext() {
+export async function getEoaAuthContext(): Promise<EoaAuthContext> {
   const client = await getLitClient();
   const manager = getAuthManager();
   const account = getSubsidizingAccount();

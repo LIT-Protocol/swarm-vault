@@ -4,17 +4,10 @@
  */
 
 import SafeApiKitModule from "@safe-global/api-kit";
-import Safe, { hashSafeMessage } from "@safe-global/protocol-kit";
-import {
-  type Address,
-  createPublicClient,
-  keccak256,
-  toBytes,
-  http,
-} from "viem";
+import { hashSafeMessage } from "@safe-global/protocol-kit";
+import { type Address, keccak256, toBytes } from "viem";
 import { env } from "./env.js";
 import { EIP712TypedData } from "@safe-global/types-kit";
-import { base } from "viem/chains";
 
 // Handle ESM default export compatibility
 const SafeApiKit =

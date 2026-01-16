@@ -405,7 +405,7 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = (await tokenResponse.json()) as { access_token: string };
     const accessToken = tokenData.access_token;
 
     // Get user info from Twitter
@@ -421,7 +421,7 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    const userData = await userResponse.json();
+    const userData = (await userResponse.json()) as { data: { id: string; username: string } };
     const twitterId = userData.data.id;
     const twitterUsername = userData.data.username;
 

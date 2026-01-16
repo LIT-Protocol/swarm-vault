@@ -41,6 +41,7 @@ const USER_FRIENDLY_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.NOT_MANAGER]: "Only swarm managers can perform this action",
   [ErrorCode.NOT_MEMBER]: "You must be a member of this swarm",
   [ErrorCode.ALREADY_MEMBER]: "You are already a member of this swarm",
+  [ErrorCode.TWITTER_NOT_LINKED]: "Twitter account not linked",
 
   // External services
   [ErrorCode.LIT_ERROR]: "Key signing service is temporarily unavailable",
@@ -48,6 +49,8 @@ const USER_FRIENDLY_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.ALCHEMY_ERROR]: "Balance service is temporarily unavailable",
   [ErrorCode.ZEROX_ERROR]: "Swap service is temporarily unavailable",
   [ErrorCode.BUNDLER_ERROR]: "Transaction bundler is temporarily unavailable",
+  [ErrorCode.TWITTER_ERROR]: "Twitter service is temporarily unavailable",
+  [ErrorCode.SAFE_ERROR]: "Safe service is temporarily unavailable",
 
   // Transactions
   [ErrorCode.TX_FAILED]: "Transaction failed",
@@ -55,6 +58,14 @@ const USER_FRIENDLY_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.INSUFFICIENT_BALANCE]: "Insufficient balance for this transaction",
   [ErrorCode.NO_ACTIVE_MEMBERS]: "No active members in this swarm",
   [ErrorCode.SIGNING_FAILED]: "Failed to sign the transaction",
+
+  // Proposals
+  [ErrorCode.PROPOSAL_NOT_FOUND]: "Proposal not found",
+  [ErrorCode.PROPOSAL_NOT_APPROVED]: "Proposal has not been approved",
+  [ErrorCode.PROPOSAL_EXPIRED]: "Proposal has expired",
+  [ErrorCode.PROPOSAL_ALREADY_EXECUTED]: "Proposal has already been executed",
+  [ErrorCode.SAFE_SIGNOFF_REQUIRED]: "Safe sign-off is required for this action",
+  [ErrorCode.SAFE_NOT_CONFIGURED]: "Safe is not configured for this swarm",
 
   // Internal
   [ErrorCode.INTERNAL_ERROR]: "An unexpected error occurred. Please try again",

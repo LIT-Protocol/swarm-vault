@@ -145,7 +145,7 @@ export async function executeSwapTransaction(
         });
 
         // Build the calls array
-        const calls: Array<{ to: Address; value: bigint; data: Hex }> = [];
+        const calls: Array<{ to: Hex; value: bigint; data: Hex }> = [];
 
         // Check if we need approval for ERC20 tokens (not native ETH)
         if (!isNativeToken(data.sellToken)) {
@@ -175,7 +175,7 @@ export async function executeSwapTransaction(
             });
 
             calls.push({
-              to: data.sellToken,
+              to: data.sellToken as Hex,
               value: 0n,
               data: approvalData,
             });
@@ -187,7 +187,7 @@ export async function executeSwapTransaction(
         console.log(`[SwapExecutor] Swap transaction value: ${data.transaction.value || "0"}`);
 
         calls.push({
-          to: data.transaction.to,
+          to: data.transaction.to as Hex,
           value: BigInt(data.transaction.value || "0"),
           data: data.transaction.data as Hex,
         });

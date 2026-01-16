@@ -31,15 +31,15 @@ app.use(
   "/api/docs",
   apiReference({
     spec: {
-      content: swaggerSpec,
+      url: "/api/openapi.json",
     },
     theme: "purple",
     layout: "modern",
     defaultHttpClient: {
-      targetKey: "javascript",
+      targetKey: "js",
       clientKey: "fetch",
     },
-  })
+  } as Parameters<typeof apiReference>[0])
 );
 
 // Routes

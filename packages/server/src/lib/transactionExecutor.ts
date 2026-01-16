@@ -210,9 +210,9 @@ export async function executeSwarmTransaction(
         // Prepare the call data
         const callData = await kernelClient.account.encodeCalls([
           {
-            to: resolved.to,
+            to: resolved.to as `0x${string}`,
             value: resolved.value,
-            data: resolved.data,
+            data: resolved.data as `0x${string}`,
           },
         ]);
 
