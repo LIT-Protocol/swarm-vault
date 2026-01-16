@@ -24,7 +24,14 @@ interface WithdrawModalProps {
   };
 }
 
-type WithdrawStatus = "idle" | "preparing" | "signing" | "submitting" | "confirming" | "success" | "error";
+type WithdrawStatus =
+  | "idle"
+  | "preparing"
+  | "signing"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "error";
 
 export default function WithdrawModal({
   isOpen,
@@ -59,7 +66,8 @@ export default function WithdrawModal({
 
   // Validate amount
   const parsedAmount = parseFloat(amount);
-  const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= maxAmount;
+  const isValidAmount =
+    !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= maxAmount;
 
   const handleMaxClick = () => {
     setAmount(formattedBalance);
@@ -140,7 +148,12 @@ export default function WithdrawModal({
     }
   };
 
-  const isProcessing = ["preparing", "signing", "submitting", "confirming"].includes(status);
+  const isProcessing = [
+    "preparing",
+    "signing",
+    "submitting",
+    "confirming",
+  ].includes(status);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -163,8 +176,18 @@ export default function WithdrawModal({
               disabled={isProcessing}
               className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -176,7 +199,8 @@ export default function WithdrawModal({
               <span className="font-mono font-medium text-gray-900">
                 {parseFloat(formattedBalance).toLocaleString(undefined, {
                   maximumFractionDigits: 6,
-                })} {token.symbol}
+                })}{" "}
+                {token.symbol}
               </span>
             </div>
           </div>
@@ -227,33 +251,49 @@ export default function WithdrawModal({
 
           {/* Status Message */}
           {getStatusMessage() && (
-            <div className={`mb-6 p-4 rounded-lg ${
-              status === "success"
-                ? "bg-green-50 border border-green-200"
-                : status === "error"
-                ? "bg-red-50 border border-red-200"
-                : "bg-blue-50 border border-blue-200"
-            }`}>
+            <div
+              className={`mb-6 p-4 rounded-lg ${
+                status === "success"
+                  ? "bg-green-50 border border-green-200"
+                  : status === "error"
+                  ? "bg-red-50 border border-red-200"
+                  : "bg-blue-50 border border-blue-200"
+              }`}
+            >
               <div className="flex items-center gap-3">
                 {isProcessing && (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
                 )}
                 {status === "success" && (
-                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-5 h-5 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
-                <span className={`text-sm ${
-                  status === "success" ? "text-green-800" :
-                  status === "error" ? "text-red-800" :
-                  "text-blue-800"
-                }`}>
+                <span
+                  className={`text-sm ${
+                    status === "success"
+                      ? "text-green-800"
+                      : status === "error"
+                      ? "text-red-800"
+                      : "text-blue-800"
+                  }`}
+                >
                   {getStatusMessage()}
                 </span>
               </div>
               {txHash && (
                 <a
-                  href={`https://sepolia.basescan.org/tx/${txHash}`}
+                  href={`https://basescan.org/tx/${txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-block text-sm text-blue-600 hover:text-blue-800 underline"
