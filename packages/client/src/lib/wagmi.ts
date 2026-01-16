@@ -1,6 +1,5 @@
-import { http, createConfig } from "wagmi";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia, base } from "wagmi/chains";
-import { injected } from "wagmi/connectors";
 
 const chainId = Number(import.meta.env.VITE_CHAIN_ID || 84532);
 
@@ -8,12 +7,9 @@ const chainId = Number(import.meta.env.VITE_CHAIN_ID || 84532);
 const primaryChain = chainId === 8453 ? base : baseSepolia;
 const secondaryChain = chainId === 8453 ? baseSepolia : base;
 
-export const wagmiConfig = createConfig({
-  // Primary chain first, secondary available for switching
+export const wagmiConfig = getDefaultConfig({
+  appName: "Swarm Vault",
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "demo",
   chains: [primaryChain, secondaryChain],
-  connectors: [injected()],
-  transports: {
-    [baseSepolia.id]: http(),
-    [base.id]: http(),
-  },
+  ssr: false,
 });

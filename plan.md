@@ -1363,7 +1363,7 @@ Replace custom wallet connection with RainbowKit (Phase 15), which handles these
 
 ## Project Status
 
-All 15 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 16 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1382,6 +1382,7 @@ All 15 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - **Lit Protocol Naga Network support (v8 SDK)**
 - **Interactive API documentation (Scalar) at `/api/docs`**
 - **OpenAPI 3.1 spec for LLM consumption at `/api/openapi.json`**
+- **RainbowKit wallet connection UI for reliable wallet management**
 
 ### Phase 13.5: SAFE UI Disabled for Launch
 
@@ -1558,3 +1559,62 @@ To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `Swap
 - **No Data Migration Required**: Since the app hasn't launched yet, no PKP migration is needed. Wipe the database and start fresh.
 - **Peer Dependencies**: The Lit SDK v8 has peer dependency on viem 2.38.3, but works with higher versions (with warnings).
 - **Native Addons**: Some optional native dependencies (bufferutil, utf-8-validate) may fail to build if `make` is not installed, but this doesn't affect functionality.
+
+---
+
+### Phase 16 Learnings (RainbowKit Integration)
+
+**Completed:** 2026-01-16
+
+#### Why RainbowKit
+
+1. **Reliable Wallet Management**: RainbowKit handles the complex edge cases of wallet connection, disconnection, and reconnection that were causing issues (see "Bug Fix: Wallet Reconnection After Logout" above).
+
+2. **Better UX**: Provides a polished, production-ready connect modal with:
+   - Multiple wallet options (MetaMask, WalletConnect, Coinbase Wallet, etc.)
+   - Network switching UI
+   - Account display with balance
+   - Mobile-responsive design
+
+3. **Simplified Code**: Eliminates ~60 lines of complex connection state management in `Layout.tsx`.
+
+#### Implementation Details
+
+1. **Package Installation**: Added `@rainbow-me/rainbowkit` v2.2.3 to client dependencies.
+
+2. **wagmi Config Migration**: Switched from manual `createConfig` to RainbowKit's `getDefaultConfig`:
+   ```typescript
+   // Before
+   export const wagmiConfig = createConfig({
+     chains: [primaryChain, secondaryChain],
+     connectors: [injected()],
+     transports: { ... },
+   });
+
+   // After
+   export const wagmiConfig = getDefaultConfig({
+     appName: "Swarm Vault",
+     projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "demo",
+     chains: [primaryChain, secondaryChain],
+     ssr: false,
+   });
+   ```
+
+3. **Provider Setup**: Added `RainbowKitProvider` with dark theme to the provider hierarchy in `main.tsx`.
+
+4. **Layout Simplification**: Replaced custom connect button and complex state management with RainbowKit's `ConnectButton` component.
+
+5. **Auth Flow**: The SIWE authentication flow remains unchanged - user connects wallet via RainbowKit, then clicks "Sign In" to complete SIWE authentication.
+
+#### Environment Variables
+
+- `VITE_WALLETCONNECT_PROJECT_ID` - WalletConnect Cloud project ID (get from https://cloud.walletconnect.com)
+
+#### Key Files Modified
+
+- `packages/client/package.json` - Added @rainbow-me/rainbowkit dependency
+- `packages/client/src/lib/wagmi.ts` - Migrated to getDefaultConfig
+- `packages/client/src/main.tsx` - Added RainbowKitProvider
+- `packages/client/src/components/Layout.tsx` - Replaced custom connect logic with ConnectButton
+- `packages/client/src/vite-env.d.ts` - Added VITE_WALLETCONNECT_PROJECT_ID type
+- `.env.example` - Added VITE_WALLETCONNECT_PROJECT_ID
