@@ -286,7 +286,7 @@ export default function SwapForm({
     }
     // Then check common tokens
     const common = commonTokens.find(
-      (t) => t.address.toLowerCase() === address.toLowerCase()
+      (t: TokenInfo) => t.address.toLowerCase() === address.toLowerCase()
     );
     if (common) return common;
     return { symbol: address.slice(0, 6), name: "Unknown", decimals: 18 };
@@ -390,7 +390,7 @@ export default function SwapForm({
                       )}
                     {/* Common tokens not in holdings */}
                     {commonTokens
-                      .filter((t) => {
+                      .filter((t: TokenInfo) => {
                         if (!holdings) return true;
                         if (
                           t.address.toLowerCase() ===
@@ -403,7 +403,7 @@ export default function SwapForm({
                             h.address.toLowerCase() === t.address.toLowerCase()
                         );
                       })
-                      .map((token) => (
+                      .map((token: TokenInfo) => (
                         <option key={token.address} value={token.address}>
                           {token.symbol} (no holdings)
                         </option>
@@ -422,7 +422,7 @@ export default function SwapForm({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select token to buy</option>
-                    {commonTokens.map((token) => (
+                    {commonTokens.map((token: TokenInfo) => (
                       <option key={token.address} value={token.address}>
                         {token.symbol} - {token.name}
                       </option>

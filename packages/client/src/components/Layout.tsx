@@ -37,12 +37,8 @@ export default function Layout() {
     if (status === 'error') {
       try {
         pendingLoginRef.current = true;
-        const reconnectResult = await reconnect({ connectors: [connectors[0]] });
-        if (!reconnectResult || reconnectResult.length === 0) {
-          pendingLoginRef.current = false;
-          pendingConnectRef.current = true;
-          reset();
-        }
+        await reconnect({ connectors: [connectors[0]] });
+        // If reconnect succeeds without error, the useEffect will handle login
         return;
       } catch {
         pendingLoginRef.current = false;
