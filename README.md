@@ -130,6 +130,7 @@ swarm-vault/
 | `JWT_SECRET` | Secret for JWT signing (min 32 chars) | Yes | `your-secret` |
 | `PORT` | Server port | No | `3001` (default) |
 | `NODE_ENV` | Environment mode | No | `development` or `production` |
+| `CLIENT_URL` | Frontend URL for CORS | Prod | `https://your-frontend.com` |
 
 ### Client Variables (Vite)
 

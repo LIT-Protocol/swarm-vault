@@ -25,6 +25,8 @@ const envSchema = z.object({
   SWAP_FEE_BPS: z.coerce.number().min(0).max(1000).default(50), // Default 50 bps = 0.5%
   // Safe Global API
   SAFE_API_KEY: z.string().optional(),
+  // CORS
+  CLIENT_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

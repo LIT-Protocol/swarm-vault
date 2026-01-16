@@ -13,12 +13,18 @@ import { swapRouter } from "./routes/swap.js";
 import { proposalsRouter } from "./routes/proposals.js";
 import { pollPendingTransactions } from "./lib/transactionExecutor.js";
 import { swaggerSpec } from "./lib/openapi.js";
+import { env } from "./lib/env.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: env.CLIENT_URL || true,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 
