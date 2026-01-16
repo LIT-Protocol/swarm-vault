@@ -1,0 +1,1 @@
+web: pnpm --filter @swarm-vault/server start
