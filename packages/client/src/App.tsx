@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
+import About from "./pages/About";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import SwarmDetail from "./pages/SwarmDetail";
 import SwarmDiscovery from "./pages/SwarmDiscovery";
@@ -14,6 +15,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
+        <Route path="about" element={<About />} />
         <Route
           path="manager"
           element={

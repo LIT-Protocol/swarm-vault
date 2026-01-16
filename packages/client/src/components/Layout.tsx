@@ -103,6 +103,12 @@ export default function Layout() {
 
             <nav className="flex items-center gap-4">
               <Link
+                to="/about"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              >
+                About
+              </Link>
+              <Link
                 to="/swarms"
                 className="text-sm font-medium text-gray-600 hover:text-gray-900"
               >
