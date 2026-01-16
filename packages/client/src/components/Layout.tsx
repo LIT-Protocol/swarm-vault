@@ -65,7 +65,7 @@ export default function Layout() {
                 </>
               ) : isConnected && !isAuthenticated ? (
                 <div className="flex items-center gap-3">
-                  <ConnectButton showBalance={false} />
+                  <ConnectButton showBalance={false} chainStatus="none" />
                   <button
                     onClick={login}
                     disabled={isLoading}
@@ -75,7 +75,7 @@ export default function Layout() {
                   </button>
                 </div>
               ) : (
-                <ConnectButton />
+                <ConnectButton chainStatus="none" />
               )}
             </nav>
           </div>
