@@ -13,8 +13,59 @@ const JoinSwarmSchema = z.object({
   sessionKeyApproval: z.string().min(1, "Session key approval is required"),
 });
 
-// POST /api/swarms/:swarmId/join - Join a swarm
-// Client must create the kernel account and serialize the permission account
+/**
+ * @openapi
+ * /api/swarms/{swarmId}/join:
+ *   post:
+ *     tags: [Memberships]
+ *     summary: Join a swarm
+ *     description: |
+ *       Join a swarm as a member. The client must create the smart wallet
+ *       and serialize the permission account before calling this endpoint.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: swarmId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID to join
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [agentWalletAddress, sessionKeyApproval]
+ *             properties:
+ *               agentWalletAddress:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: The smart wallet address created by the client
+ *               sessionKeyApproval:
+ *                 type: string
+ *                 description: Serialized permission account for PKP signing
+ *     responses:
+ *       201:
+ *         description: Successfully joined swarm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/Membership"
+ *       400:
+ *         description: Already a member or invalid data
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Swarm not found
+ */
 router.post(
   "/swarms/:swarmId/join",
   authMiddleware,
@@ -152,7 +203,32 @@ router.post(
   }
 );
 
-// GET /api/memberships - Get current user's memberships
+/**
+ * @openapi
+ * /api/memberships:
+ *   get:
+ *     tags: [Memberships]
+ *     summary: List user's memberships
+ *     description: Get all active swarm memberships for the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Memberships retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Membership"
+ *       401:
+ *         description: Unauthorized
+ */
 router.get("/", authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
@@ -197,7 +273,69 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/memberships/:id - Get membership details
+/**
+ * @openapi
+ * /api/memberships/{id}:
+ *   get:
+ *     tags: [Memberships]
+ *     summary: Get membership details
+ *     description: Get detailed information about a specific membership
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Membership ID
+ *     responses:
+ *       200:
+ *         description: Membership details retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     swarmId:
+ *                       type: string
+ *                     agentWalletAddress:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     joinedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     swarm:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         description:
+ *                           type: string
+ *                         memberCount:
+ *                           type: integer
+ *                         managers:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not your membership
+ *       404:
+ *         description: Membership not found
+ */
 router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -276,7 +414,50 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/memberships/:id/leave - Leave a swarm
+/**
+ * @openapi
+ * /api/memberships/{id}/leave:
+ *   post:
+ *     tags: [Memberships]
+ *     summary: Leave a swarm
+ *     description: Leave a swarm membership. The agent wallet remains but swarm managers can no longer execute transactions.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Membership ID
+ *     responses:
+ *       200:
+ *         description: Successfully left swarm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [LEFT]
+ *       400:
+ *         description: Already left
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not your membership
+ *       404:
+ *         description: Membership not found
+ */
 router.post("/:id/leave", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -335,7 +516,49 @@ router.post("/:id/leave", authMiddleware, async (req: Request, res: Response) =>
   }
 });
 
-// GET /api/memberships/:id/balance - Get agent wallet balance
+/**
+ * @openapi
+ * /api/memberships/{id}/balance:
+ *   get:
+ *     tags: [Memberships]
+ *     summary: Get agent wallet balance
+ *     description: Get ETH and token balances for the membership's agent wallet
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Membership ID
+ *       - name: refresh
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Force refresh from blockchain (bypasses cache)
+ *     responses:
+ *       200:
+ *         description: Balance retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/WalletBalance"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not your membership
+ *       404:
+ *         description: Membership not found
+ */
 router.get("/:id/balance", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

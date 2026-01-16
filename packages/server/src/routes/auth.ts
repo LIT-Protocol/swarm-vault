@@ -42,7 +42,47 @@ function generatePKCE() {
   return { codeVerifier, codeChallenge };
 }
 
-// POST /api/auth/nonce - Generate nonce for SIWE
+/**
+ * @openapi
+ * /api/auth/nonce:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Get SIWE nonce
+ *     description: Generate a nonce for Sign-In With Ethereum (SIWE) authentication. The nonce expires in 5 minutes.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [address]
+ *             properties:
+ *               address:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: Ethereum wallet address
+ *                 example: "0x1234567890abcdef1234567890abcdef12345678"
+ *     responses:
+ *       200:
+ *         description: Nonce generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     nonce:
+ *                       type: string
+ *                       description: Random nonce for SIWE message
+ *                       example: "8fj2k9d0s"
+ *       400:
+ *         description: Invalid address
+ */
 router.post("/nonce", (req: Request, res: Response) => {
   const { address } = req.body;
 
@@ -66,7 +106,55 @@ router.post("/nonce", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/auth/login - Verify SIWE signature and return JWT
+/**
+ * @openapi
+ * /api/auth/login:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Login with SIWE signature
+ *     description: |
+ *       Verify a signed SIWE (Sign-In With Ethereum) message and return a JWT token.
+ *       The JWT token is valid for 7 days and should be included in the Authorization header
+ *       for authenticated requests.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message, signature]
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: The prepared SIWE message that was signed
+ *                 example: "swarm-vault.com wants you to sign in with your Ethereum account:\n0x1234...5678\n\nSign in to Swarm Vault\n\nURI: https://swarm-vault.com\nVersion: 1\nChain ID: 8453\nNonce: 8fj2k9d0s\nIssued At: 2024-01-15T00:00:00.000Z"
+ *               signature:
+ *                 type: string
+ *                 description: The signature of the SIWE message
+ *                 example: "0x..."
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       description: JWT token for authenticated requests
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                     user:
+ *                       $ref: "#/components/schemas/User"
+ *       400:
+ *         description: Invalid signature or expired nonce
+ */
 router.post("/login", async (req: Request, res: Response) => {
   const { message, signature } = req.body;
 
@@ -158,7 +246,33 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/me - Get current user
+/**
+ * @openapi
+ * /api/auth/me:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Get current user
+ *     description: Get the authenticated user's profile information
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: "#/components/schemas/User"
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *       404:
+ *         description: User not found
+ */
 router.get("/me", authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({

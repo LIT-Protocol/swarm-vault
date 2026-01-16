@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import { apiReference } from "@scalar/express-api-reference";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
@@ -11,6 +12,7 @@ import { transactionsRouter } from "./routes/transactions.js";
 import { swapRouter } from "./routes/swap.js";
 import { proposalsRouter } from "./routes/proposals.js";
 import { pollPendingTransactions } from "./lib/transactionExecutor.js";
+import { swaggerSpec } from "./lib/openapi.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +21,26 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+
+// API Documentation (must be before other /api routes to avoid auth middleware)
+app.get("/api/openapi.json", (_req, res) => {
+  res.json(swaggerSpec);
+});
+
+app.use(
+  "/api/docs",
+  apiReference({
+    spec: {
+      content: swaggerSpec,
+    },
+    theme: "purple",
+    layout: "modern",
+    defaultHttpClient: {
+      targetKey: "javascript",
+      clientKey: "fetch",
+    },
+  })
+);
 
 // Routes
 app.use("/api/health", healthRouter);

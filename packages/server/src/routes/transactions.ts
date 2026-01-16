@@ -10,7 +10,97 @@ import { executeSwarmTransaction } from "../lib/transactionExecutor.js";
 
 const router = Router();
 
-// POST /api/swarms/:id/transactions - Execute a swarm transaction (manager only)
+/**
+ * @openapi
+ * /api/swarms/{id}/transactions:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Execute a custom transaction
+ *     description: |
+ *       Execute a custom transaction across all swarm member wallets using a template.
+ *       Templates support placeholders for wallet addresses, balances, and computed values.
+ *       **Manager only** - only swarm managers can execute transactions.
+ *
+ *       The transaction is executed asynchronously - poll the returned transaction ID for status updates.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [template]
+ *             properties:
+ *               template:
+ *                 type: object
+ *                 required: [contractAddress]
+ *                 properties:
+ *                   contractAddress:
+ *                     type: string
+ *                     pattern: "^0x[a-fA-F0-9]{40}$"
+ *                     description: Target contract address
+ *                   abi:
+ *                     type: array
+ *                     description: Contract ABI (required for ABI mode)
+ *                   functionName:
+ *                     type: string
+ *                     description: Function to call (required for ABI mode)
+ *                   args:
+ *                     type: array
+ *                     description: Function arguments (can include placeholders)
+ *                   data:
+ *                     type: string
+ *                     description: Raw calldata hex (for raw mode, can include placeholders)
+ *                   value:
+ *                     type: string
+ *                     description: ETH value to send (wei, can be placeholder)
+ *                     default: "0"
+ *           example:
+ *             template:
+ *               contractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+ *               abi: [{"name": "transfer", "type": "function", "inputs": [{"name": "to", "type": "address"}, {"name": "amount", "type": "uint256"}]}]
+ *               functionName: "transfer"
+ *               args: ["0x1234567890abcdef1234567890abcdef12345678", "{{percentage:tokenBalance:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913:50}}"]
+ *               value: "0"
+ *     responses:
+ *       202:
+ *         description: Transaction execution started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transactionId:
+ *                       type: string
+ *                       format: uuid
+ *                     status:
+ *                       type: string
+ *                       enum: [PENDING]
+ *                     memberCount:
+ *                       type: integer
+ *       400:
+ *         description: Invalid template or no active members
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can execute transactions
+ *       404:
+ *         description: Swarm not found
+ */
 router.post(
   "/swarms/:id/transactions",
   authMiddleware,
@@ -137,7 +227,46 @@ router.post(
   }
 );
 
-// GET /api/swarms/:id/transactions - List swarm transactions (manager only)
+/**
+ * @openapi
+ * /api/swarms/{id}/transactions:
+ *   get:
+ *     tags: [Transactions]
+ *     summary: List swarm transactions
+ *     description: |
+ *       Get a list of all transactions executed for this swarm.
+ *       **Manager only** - only swarm managers can view transactions.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     responses:
+ *       200:
+ *         description: Transactions retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Transaction"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can view transactions
+ *       404:
+ *         description: Swarm not found
+ */
 router.get(
   "/swarms/:id/transactions",
   authMiddleware,
@@ -226,7 +355,90 @@ router.get(
   }
 );
 
-// GET /api/transactions/:id - Get transaction details
+/**
+ * @openapi
+ * /api/transactions/{id}:
+ *   get:
+ *     tags: [Transactions]
+ *     summary: Get transaction details
+ *     description: |
+ *       Get detailed status and results for a specific transaction.
+ *       Includes per-member status for tracking progress.
+ *       **Manager only** - only swarm managers can view transaction details.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     swarmId:
+ *                       type: string
+ *                       format: uuid
+ *                     status:
+ *                       type: string
+ *                       enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+ *                     template:
+ *                       type: object
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     targets:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           membershipId:
+ *                             type: string
+ *                           userWallet:
+ *                             type: string
+ *                           agentWallet:
+ *                             type: string
+ *                           resolvedTxData:
+ *                             type: object
+ *                           userOpHash:
+ *                             type: string
+ *                             nullable: true
+ *                           txHash:
+ *                             type: string
+ *                             nullable: true
+ *                           status:
+ *                             type: string
+ *                             enum: [PENDING, SUBMITTED, CONFIRMED, FAILED]
+ *                           error:
+ *                             type: string
+ *                             nullable: true
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can view transaction details
+ *       404:
+ *         description: Transaction not found
+ */
 router.get(
   "/transactions/:id",
   authMiddleware,

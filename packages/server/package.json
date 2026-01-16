@@ -18,6 +18,7 @@
     "@safe-global/api-kit": "^4.0.1",
     "@safe-global/protocol-kit": "^6.1.2",
     "@safe-global/types-kit": "^3.0.0",
+    "@scalar/express-api-reference": "^0.8.33",
     "@swarm-vault/shared": "workspace:*",
     "@zerodev/ecdsa-validator": "^5.4.9",
     "@zerodev/permissions": "^5.4.9",
@@ -30,6 +31,7 @@
     "morgan": "^1.10.0",
     "permissionless": "^0.3.2",
     "siwe": "^2.1.4",
+    "swagger-jsdoc": "^6.2.8",
     "uuid": "^9.0.0",
     "viem": "^2.7.0",
     "zod": "^3.22.4"
@@ -40,6 +42,7 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.6",
+    "@types/swagger-jsdoc": "^6.0.4",
     "@types/uuid": "^9.0.0",
     "prisma": "^5.8.0",
     "tsx": "^4.7.0",

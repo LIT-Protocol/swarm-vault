@@ -33,8 +33,73 @@ const SwapExecuteSchema = z.object({
 });
 
 /**
- * POST /api/swarms/:id/swap/preview
- * Get a preview of what a swap would look like for all swarm members
+ * @openapi
+ * /api/swarms/{id}/swap/preview:
+ *   post:
+ *     tags: [Swaps]
+ *     summary: Preview swap for all swarm members
+ *     description: |
+ *       Get a preview of what a swap would look like for all swarm members.
+ *       Returns expected amounts for each member without executing the swap.
+ *       **Manager only** - only swarm managers can preview swaps.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sellToken, buyToken]
+ *             properties:
+ *               sellToken:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: Token address to sell (use 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE for ETH)
+ *                 example: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+ *               buyToken:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: Token address to buy
+ *                 example: "0x4200000000000000000000000000000000000006"
+ *               sellPercentage:
+ *                 type: number
+ *                 minimum: 1
+ *                 maximum: 100
+ *                 default: 100
+ *                 description: Percentage of token balance to sell
+ *               slippagePercentage:
+ *                 type: number
+ *                 minimum: 0.01
+ *                 maximum: 50
+ *                 default: 1
+ *                 description: Slippage tolerance percentage
+ *     responses:
+ *       200:
+ *         description: Swap preview generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/SwapPreview"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can preview swaps
+ *       404:
+ *         description: Swarm not found
  */
 router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -204,8 +269,93 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
 });
 
 /**
- * POST /api/swarms/:id/swap/execute
- * Execute a swap for all swarm members
+ * @openapi
+ * /api/swarms/{id}/swap/execute:
+ *   post:
+ *     tags: [Swaps]
+ *     summary: Execute swap for all swarm members
+ *     description: |
+ *       Execute a token swap for all active swarm members.
+ *       The swap is executed asynchronously - poll the returned transaction ID for status updates.
+ *       **Manager only** - only swarm managers can execute swaps.
+ *
+ *       A platform fee (default 0.5%) is deducted from the buy token amount.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sellToken, buyToken]
+ *             properties:
+ *               sellToken:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: Token address to sell
+ *               buyToken:
+ *                 type: string
+ *                 pattern: "^0x[a-fA-F0-9]{40}$"
+ *                 description: Token address to buy
+ *               sellPercentage:
+ *                 type: number
+ *                 minimum: 1
+ *                 maximum: 100
+ *                 default: 100
+ *               slippagePercentage:
+ *                 type: number
+ *                 minimum: 0.01
+ *                 maximum: 50
+ *                 default: 1
+ *     responses:
+ *       200:
+ *         description: Swap execution started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transactionId:
+ *                       type: string
+ *                       format: uuid
+ *                       description: Transaction ID for status polling
+ *                     status:
+ *                       type: string
+ *                       enum: [PENDING]
+ *                     memberCount:
+ *                       type: integer
+ *                     message:
+ *                       type: string
+ *                     fee:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         bps:
+ *                           type: integer
+ *                         percentage:
+ *                           type: string
+ *                         recipientAddress:
+ *                           type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can execute swaps
+ *       404:
+ *         description: Swarm not found
  */
 router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -355,8 +505,43 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
 });
 
 /**
- * GET /api/swarms/:id/holdings
- * Get aggregate token holdings across all swarm members
+ * @openapi
+ * /api/swarms/{id}/holdings:
+ *   get:
+ *     tags: [Swaps]
+ *     summary: Get aggregate swarm holdings
+ *     description: |
+ *       Get aggregate token holdings across all swarm members.
+ *       Returns total ETH and token balances with holder counts.
+ *       **Manager only** - only swarm managers can view holdings.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     responses:
+ *       200:
+ *         description: Holdings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/Holdings"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can view holdings
+ *       404:
+ *         description: Swarm not found
  */
 router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) => {
   try {

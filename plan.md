@@ -1363,7 +1363,7 @@ Replace custom wallet connection with RainbowKit (Phase 15), which handles these
 
 ## Project Status
 
-All 14 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+All 15 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1380,6 +1380,8 @@ All 14 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - **0x Swap Fee Collection (0.5% platform fee)**
 - ~~**Gnosis SAFE multi-sig sign-off for institutional-grade controls**~~ (disabled in UI for launch - see Phase 13.5)
 - **Lit Protocol Naga Network support (v8 SDK)**
+- **Interactive API documentation (Scalar) at `/api/docs`**
+- **OpenAPI 3.1 spec for LLM consumption at `/api/openapi.json`**
 
 ### Phase 13.5: SAFE UI Disabled for Launch
 
@@ -1397,6 +1399,65 @@ The Gnosis SAFE sign-off feature (Phase 13) is complete on the backend and in th
 - Lit Actions with SAFE verification capability
 
 To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `SwapForm.tsx`.
+
+### Phase 15 Learnings (API Documentation for Swarm Managers)
+
+**Completed:** 2026-01-15
+
+#### Package Selection
+
+1. **swagger-jsdoc**: Used for generating OpenAPI spec from JSDoc comments in route files. Allows keeping documentation close to the code.
+
+2. **@scalar/express-api-reference**: Modern, beautiful API documentation UI with:
+   - Built-in API playground for testing endpoints
+   - Code examples in multiple languages
+   - Dark/light theme support
+   - Interactive authentication flow
+
+#### OpenAPI Configuration
+
+1. **Centralized Spec File**: Created `packages/server/src/lib/openapi.ts` with:
+   - Full OpenAPI 3.1.0 spec definition
+   - Comprehensive schema definitions for all types (User, Swarm, Membership, Transaction, etc.)
+   - Security scheme for JWT Bearer authentication
+   - Tag organization for logical grouping
+
+2. **JSDoc Annotations**: Added `@openapi` JSDoc blocks to all route handlers with:
+   - Operation summary and description
+   - Request body schemas with examples
+   - Response schemas referencing component schemas
+   - Security requirements
+   - Path parameters
+
+3. **Authentication Documentation**: Included detailed SIWE authentication flow in the API description with JavaScript code examples.
+
+#### Documentation Endpoints
+
+1. **Interactive Docs**: Served at `/api/docs` using Scalar's `apiReference` middleware with:
+   - Purple theme
+   - Modern layout
+   - JavaScript/fetch as default code examples
+
+2. **OpenAPI Spec**: Raw OpenAPI JSON available at `/api/openapi.json` for:
+   - LLM consumption
+   - Client SDK generation
+   - External tooling integration
+
+#### Key Files Created
+
+- `packages/server/src/lib/openapi.ts` - OpenAPI spec configuration and schema definitions
+
+#### Key Files Modified
+
+- `packages/server/package.json` - Added swagger-jsdoc and @scalar/express-api-reference
+- `packages/server/src/index.ts` - Added /api/docs and /api/openapi.json routes
+- `packages/server/src/routes/auth.ts` - Added OpenAPI annotations
+- `packages/server/src/routes/swarms.ts` - Added OpenAPI annotations
+- `packages/server/src/routes/transactions.ts` - Added OpenAPI annotations
+- `packages/server/src/routes/swap.ts` - Added OpenAPI annotations
+- `packages/server/src/routes/memberships.ts` - Added OpenAPI annotations
+
+---
 
 ### Phase 14 Learnings (Switch to Naga Lit Network)
 

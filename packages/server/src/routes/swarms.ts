@@ -7,7 +7,34 @@ import { validateSafeAddress } from "../lib/safe.js";
 
 const router = Router();
 
-// GET /api/swarms - List all swarms (public, with optional auth for manager info)
+/**
+ * @openapi
+ * /api/swarms:
+ *   get:
+ *     tags: [Swarms]
+ *     summary: List all swarms
+ *     description: |
+ *       Get a list of all public swarms. If authenticated, the response includes
+ *       whether the current user is a manager of each swarm.
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
+ *     responses:
+ *       200:
+ *         description: Swarms retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Swarm"
+ */
 router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const swarms = await prisma.swarm.findMany({
@@ -66,7 +93,78 @@ router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/swarms - Create a new swarm (requires auth + Twitter)
+/**
+ * @openapi
+ * /api/swarms:
+ *   post:
+ *     tags: [Swarms]
+ *     summary: Create a new swarm
+ *     description: |
+ *       Create a new swarm with the authenticated user as manager.
+ *       Requires a linked Twitter account for manager verification.
+ *       A new Lit Protocol PKP is minted for the swarm.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 100
+ *                 description: Name of the swarm
+ *                 example: "Alpha Traders"
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Description of the swarm
+ *                 example: "A swarm for professional traders"
+ *     responses:
+ *       201:
+ *         description: Swarm created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     litPkpPublicKey:
+ *                       type: string
+ *                       description: Public key of the swarm's Lit PKP (only visible to manager)
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     managers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           walletAddress:
+ *                             type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Twitter account not connected
+ */
 router.post("/", authMiddleware, async (req: Request, res: Response) => {
   try {
     // Check if user has linked Twitter account
@@ -154,7 +252,41 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/swarms/:id - Get swarm details
+/**
+ * @openapi
+ * /api/swarms/{id}:
+ *   get:
+ *     tags: [Swarms]
+ *     summary: Get swarm details
+ *     description: |
+ *       Get detailed information about a specific swarm.
+ *       Managers see additional details like PKP public key.
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     responses:
+ *       200:
+ *         description: Swarm details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: "#/components/schemas/Swarm"
+ *       404:
+ *         description: Swarm not found
+ */
 router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -227,7 +359,65 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
   }
 });
 
-// GET /api/swarms/:id/members - Get swarm members (manager only)
+/**
+ * @openapi
+ * /api/swarms/{id}/members:
+ *   get:
+ *     tags: [Swarms]
+ *     summary: Get swarm members
+ *     description: |
+ *       Get a list of all active members in the swarm.
+ *       **Manager only** - only swarm managers can view members.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Swarm ID
+ *     responses:
+ *       200:
+ *         description: Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       userId:
+ *                         type: string
+ *                         format: uuid
+ *                       walletAddress:
+ *                         type: string
+ *                         description: User's EOA wallet address
+ *                       agentWalletAddress:
+ *                         type: string
+ *                         description: User's smart wallet address for this swarm
+ *                       status:
+ *                         type: string
+ *                         enum: [ACTIVE, LEFT]
+ *                       joinedAt:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only managers can view members
+ *       404:
+ *         description: Swarm not found
+ */
 router.get("/:id/members", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
