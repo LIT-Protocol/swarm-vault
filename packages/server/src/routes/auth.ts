@@ -309,7 +309,11 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
 
 // GET /api/auth/twitter - Initiate Twitter OAuth flow
 router.get("/twitter", authMiddleware, (req: Request, res: Response) => {
-  if (!env.TWITTER_CLIENT_ID || !env.TWITTER_CLIENT_SECRET || !env.TWITTER_CALLBACK_URL) {
+  if (
+    !env.TWITTER_CLIENT_ID ||
+    !env.TWITTER_CLIENT_SECRET ||
+    !env.TWITTER_CALLBACK_URL
+  ) {
     res.status(500).json({
       success: false,
       error: "Twitter OAuth is not configured",
@@ -352,14 +356,23 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query;
 
   // Get frontend URL from environment or default
-  const frontendUrl = process.env.VITE_API_URL?.replace(":3001", ":5173") || "http://localhost:5173";
+  const frontendUrl = env.CLIENT_URL;
 
   if (error) {
-    res.redirect(`${frontendUrl}/settings?twitter_error=${encodeURIComponent(error as string)}`);
+    res.redirect(
+      `${frontendUrl}/settings?twitter_error=${encodeURIComponent(
+        error as string
+      )}`
+    );
     return;
   }
 
-  if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+  if (
+    !code ||
+    !state ||
+    typeof code !== "string" ||
+    typeof state !== "string"
+  ) {
     res.redirect(`${frontendUrl}/settings?twitter_error=missing_params`);
     return;
   }
@@ -382,26 +395,31 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
 
   try {
     // Exchange code for access token
-    const tokenResponse = await fetch("https://api.twitter.com/2/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(
-          `${env.TWITTER_CLIENT_ID}:${env.TWITTER_CLIENT_SECRET}`
-        ).toString("base64")}`,
-      },
-      body: new URLSearchParams({
-        code,
-        grant_type: "authorization_code",
-        redirect_uri: env.TWITTER_CALLBACK_URL!,
-        code_verifier: storedData.codeVerifier,
-      }).toString(),
-    });
+    const tokenResponse = await fetch(
+      "https://api.twitter.com/2/oauth2/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(
+            `${env.TWITTER_CLIENT_ID}:${env.TWITTER_CLIENT_SECRET}`
+          ).toString("base64")}`,
+        },
+        body: new URLSearchParams({
+          code,
+          grant_type: "authorization_code",
+          redirect_uri: env.TWITTER_CALLBACK_URL!,
+          code_verifier: storedData.codeVerifier,
+        }).toString(),
+      }
+    );
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error("Twitter token exchange failed:", errorData);
-      res.redirect(`${frontendUrl}/settings?twitter_error=token_exchange_failed`);
+      res.redirect(
+        `${frontendUrl}/settings?twitter_error=token_exchange_failed`
+      );
       return;
     }
 
@@ -421,7 +439,9 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    const userData = (await userResponse.json()) as { data: { id: string; username: string } };
+    const userData = (await userResponse.json()) as {
+      data: { id: string; username: string };
+    };
     const twitterId = userData.data.id;
     const twitterUsername = userData.data.username;
 
@@ -449,24 +469,28 @@ router.get("/twitter/callback", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/twitter/disconnect - Disconnect Twitter account
-router.post("/twitter/disconnect", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    await prisma.user.update({
-      where: { id: req.user!.userId },
-      data: { twitterId: null, twitterUsername: null },
-    });
+router.post(
+  "/twitter/disconnect",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: { twitterId: null, twitterUsername: null },
+      });
 
-    res.json({
-      success: true,
-      data: { message: "Twitter account disconnected" },
-    });
-  } catch (error) {
-    console.error("Failed to disconnect Twitter:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to disconnect Twitter account",
-    });
+      res.json({
+        success: true,
+        data: { message: "Twitter account disconnected" },
+      });
+    } catch (error) {
+      console.error("Failed to disconnect Twitter:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to disconnect Twitter account",
+      });
+    }
   }
-});
+);
 
 export const authRouter: Router = router;
