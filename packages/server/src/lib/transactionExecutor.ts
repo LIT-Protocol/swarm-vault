@@ -17,7 +17,7 @@ import {
 import { deserializePermissionAccount } from "@zerodev/permissions";
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
-import type { Swarm, SwarmMembership, User } from "@prisma/client";
+import type { Swarm, SwarmMembership, User, TransactionTarget } from "@prisma/client";
 import { createPkpViemAccount } from "./pkpSigner.js";
 
 // Types
@@ -281,10 +281,10 @@ export async function executeSwarmTransaction(
       where: { transactionId },
     });
 
-    const allConfirmed = updatedTargets.every((t) => t.status === "CONFIRMED");
-    const anyFailed = updatedTargets.some((t) => t.status === "FAILED");
+    const allConfirmed = updatedTargets.every((t: TransactionTarget) => t.status === "CONFIRMED");
+    const anyFailed = updatedTargets.some((t: TransactionTarget) => t.status === "FAILED");
     const anyPending = updatedTargets.some(
-      (t) => t.status === "PENDING" || t.status === "SUBMITTED"
+      (t: TransactionTarget) => t.status === "PENDING" || t.status === "SUBMITTED"
     );
 
     let finalStatus: "COMPLETED" | "FAILED" | "PROCESSING" = "COMPLETED";
@@ -423,10 +423,10 @@ async function updateTransactionStatus(transactionId: string): Promise<void> {
     where: { transactionId },
   });
 
-  const allConfirmed = targets.every((t) => t.status === "CONFIRMED");
-  const anyFailed = targets.some((t) => t.status === "FAILED");
+  const allConfirmed = targets.every((t: TransactionTarget) => t.status === "CONFIRMED");
+  const anyFailed = targets.some((t: TransactionTarget) => t.status === "FAILED");
   const anyPending = targets.some(
-    (t) => t.status === "PENDING" || t.status === "SUBMITTED"
+    (t: TransactionTarget) => t.status === "PENDING" || t.status === "SUBMITTED"
   );
 
   let status: "COMPLETED" | "FAILED" | "PROCESSING" = "COMPLETED";

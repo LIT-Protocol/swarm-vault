@@ -254,7 +254,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: memberships.map((m) => ({
+      data: memberships.map((m: { id: string; swarmId: string; agentWalletAddress: string; status: string; joinedAt: Date; swarm: { name: string; description: string } }) => ({
         id: m.id,
         swarmId: m.swarmId,
         swarmName: m.swarm.name,
@@ -398,7 +398,7 @@ router.get("/:id", authMiddleware, async (req: Request, res: Response) => {
           name: membership.swarm.name,
           description: membership.swarm.description,
           memberCount: membership.swarm._count.memberships,
-          managers: membership.swarm.managers.map((m) => ({
+          managers: membership.swarm.managers.map((m: { user: { id: string; walletAddress: string } }) => ({
             id: m.user.id,
             walletAddress: m.user.walletAddress,
           })),

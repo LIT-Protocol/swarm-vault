@@ -43,7 +43,7 @@ async function verifyManager(swarmId: string, userId: string) {
     return { error: "Swarm not found", code: ErrorCode.SWARM_NOT_FOUND };
   }
 
-  const isManager = swarm.managers.some((m) => m.userId === userId);
+  const isManager = swarm.managers.some((m: { userId: string }) => m.userId === userId);
   if (!isManager) {
     return {
       error: "Not a manager of this swarm",
@@ -200,7 +200,7 @@ router.get(
       });
 
       // Generate sign URLs for pending proposals
-      const result = proposals.map((p) => {
+      const result = proposals.map((p: { id: string; actionType: string; actionData: unknown; safeMessageHash: string; status: string; proposedAt: Date; approvedAt: Date | null; executedAt: Date | null; expiresAt: Date; executionTxId: string | null }) => {
         // Deserialize the stored EIP-712 typed data
         const typedData = deserializeTypedData(p.safeMessageHash);
         return {
@@ -265,7 +265,7 @@ router.get(
 
       // Verify manager access
       const isManager = proposal.swarm.managers.some(
-        (m) => m.userId === userId
+        (m: { userId: string }) => m.userId === userId
       );
       if (!isManager) {
         res.status(403).json({
@@ -342,7 +342,7 @@ router.get(
 
       // Verify manager access
       const isManager = proposal.swarm.managers.some(
-        (m) => m.userId === userId
+        (m: { userId: string }) => m.userId === userId
       );
       if (!isManager) {
         res.status(403).json({
@@ -484,7 +484,7 @@ router.post(
 
       // Verify manager access
       const isManager = proposal.swarm.managers.some(
-        (m) => m.userId === userId
+        (m: { userId: string }) => m.userId === userId
       );
       if (!isManager) {
         res.status(403).json({
@@ -598,7 +598,7 @@ router.post(
 
         // Get wallet addresses
         const walletAddresses = memberships.map(
-          (m) => m.agentWalletAddress as Address
+          (m: { agentWalletAddress: string }) => m.agentWalletAddress as Address
         );
         const sellToken = swapData.sellToken as Address;
         const buyToken = swapData.buyToken as Address;
@@ -722,7 +722,7 @@ router.post(
 
       // Verify manager access
       const isManager = proposal.swarm.managers.some(
-        (m) => m.userId === userId
+        (m: { userId: string }) => m.userId === userId
       );
       if (!isManager) {
         res.status(403).json({
@@ -809,7 +809,7 @@ router.post(
 
       // Verify manager access
       const isManager = proposal.swarm.managers.some(
-        (m) => m.userId === userId
+        (m: { userId: string }) => m.userId === userId
       );
       if (!isManager) {
         res.status(403).json({

@@ -9,7 +9,7 @@ import {
 import { deserializePermissionAccount } from "@zerodev/permissions";
 import { toECDSASigner } from "@zerodev/permissions/signers";
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
-import type { Swarm, SwarmMembership, User } from "@prisma/client";
+import type { Swarm, SwarmMembership, User, TransactionTarget } from "@prisma/client";
 import { createPkpViemAccount } from "./pkpSigner.js";
 import { type SwapExecuteData, isNativeToken } from "./zeroEx.js";
 
@@ -261,10 +261,10 @@ export async function executeSwapTransaction(
       where: { transactionId },
     });
 
-    const allConfirmed = updatedTargets.every((t) => t.status === "CONFIRMED");
-    const anyFailed = updatedTargets.some((t) => t.status === "FAILED");
+    const allConfirmed = updatedTargets.every((t: TransactionTarget) => t.status === "CONFIRMED");
+    const anyFailed = updatedTargets.some((t: TransactionTarget) => t.status === "FAILED");
     const anyPending = updatedTargets.some(
-      (t) => t.status === "PENDING" || t.status === "SUBMITTED"
+      (t: TransactionTarget) => t.status === "PENDING" || t.status === "SUBMITTED"
     );
 
     let finalStatus: "COMPLETED" | "FAILED" | "PROCESSING" = "COMPLETED";

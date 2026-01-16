@@ -144,7 +144,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
@@ -171,7 +171,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
 
     // Get wallet addresses
     const walletAddresses = swarm.memberships.map(
-      (m) => m.agentWalletAddress as Address
+      (m: { agentWalletAddress: string }) => m.agentWalletAddress as Address
     );
 
     // Function to get sell amount for each wallet based on percentage
@@ -213,7 +213,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
     // Map previews to include user info
     const memberPreviews = previews.map((preview) => {
       const membership = swarm.memberships.find(
-        (m) => m.agentWalletAddress.toLowerCase() === preview.walletAddress.toLowerCase()
+        (m: { agentWalletAddress: string; id: string; user: { id: string; walletAddress: string } }) => m.agentWalletAddress.toLowerCase() === preview.walletAddress.toLowerCase()
       );
       return {
         membershipId: membership?.id,
@@ -400,7 +400,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
@@ -441,7 +441,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
 
     // Get wallet addresses
     const walletAddresses = swarm.memberships.map(
-      (m) => m.agentWalletAddress as Address
+      (m: { agentWalletAddress: string }) => m.agentWalletAddress as Address
     );
 
     // Function to get sell amount for each wallet
@@ -566,7 +566,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
       return;
     }
 
-    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,

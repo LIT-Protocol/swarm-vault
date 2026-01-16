@@ -63,20 +63,20 @@ router.get("/", optionalAuthMiddleware, async (req: Request, res: Response) => {
       },
     });
 
-    const result = swarms.map((swarm) => ({
+    const result = swarms.map((swarm: { id: string; name: string; description: string; createdAt: Date; updatedAt: Date; managers: { userId: string; user: { id: string; walletAddress: string; twitterUsername: string | null } }[]; _count: { memberships: number } }) => ({
       id: swarm.id,
       name: swarm.name,
       description: swarm.description,
       createdAt: swarm.createdAt,
       updatedAt: swarm.updatedAt,
-      managers: swarm.managers.map((m) => ({
+      managers: swarm.managers.map((m: { user: { id: string; walletAddress: string; twitterUsername: string | null } }) => ({
         id: m.user.id,
         walletAddress: m.user.walletAddress,
         twitterUsername: m.user.twitterUsername,
       })),
       memberCount: swarm._count.memberships,
       isManager: req.user
-        ? swarm.managers.some((m) => m.userId === req.user!.userId)
+        ? swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId)
         : false,
     }));
 
@@ -237,7 +237,7 @@ router.post("/", authMiddleware, async (req: Request, res: Response) => {
         litPkpPublicKey: swarm.litPkpPublicKey,
         createdAt: swarm.createdAt,
         updatedAt: swarm.updatedAt,
-        managers: swarm.managers.map((m) => ({
+        managers: swarm.managers.map((m: { user: { id: string; walletAddress: string } }) => ({
           id: m.user.id,
           walletAddress: m.user.walletAddress,
         })),
@@ -324,7 +324,7 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
     }
 
     const isManager = req.user
-      ? swarm.managers.some((m) => m.userId === req.user!.userId)
+      ? swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId)
       : false;
 
     res.json({
@@ -341,7 +341,7 @@ router.get("/:id", optionalAuthMiddleware, async (req: Request, res: Response) =
         requireSafeSignoff: swarm.requireSafeSignoff,
         createdAt: swarm.createdAt,
         updatedAt: swarm.updatedAt,
-        managers: swarm.managers.map((m) => ({
+        managers: swarm.managers.map((m: { user: { id: string; walletAddress: string; twitterUsername: string | null } }) => ({
           id: m.user.id,
           walletAddress: m.user.walletAddress,
           twitterUsername: m.user.twitterUsername,
@@ -438,7 +438,7 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
       return;
     }
 
-    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
@@ -468,7 +468,7 @@ router.get("/:id/members", authMiddleware, async (req: Request, res: Response) =
 
     res.json({
       success: true,
-      data: memberships.map((m) => ({
+      data: memberships.map((m: { id: string; agentWalletAddress: string; status: string; joinedAt: Date; user: { id: string; walletAddress: string } }) => ({
         id: m.id,
         userId: m.user.id,
         walletAddress: m.user.walletAddress,
@@ -508,7 +508,7 @@ router.patch("/:id/safe", authMiddleware, async (req: Request, res: Response) =>
       return;
     }
 
-    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
