@@ -152,6 +152,28 @@ export default function SwarmDetail() {
           </div>
         </div>
 
+        {swarm.isManager && (
+          <div className="mt-4 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">
+              App ID
+            </h3>
+            <div className="flex items-center gap-2">
+              <code className="text-sm text-gray-700 font-mono">
+                {swarm.id}
+              </code>
+              <button
+                onClick={() => copyToClipboard(swarm.id)}
+                className="text-blue-600 hover:text-blue-700 text-xs whitespace-nowrap"
+              >
+                Copy
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Use this ID with the management API
+            </p>
+          </div>
+        )}
+
         {swarm.isManager && swarm.litPkpPublicKey && (
           <div className="mt-4 bg-gray-50 rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">
