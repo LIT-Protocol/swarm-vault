@@ -1618,3 +1618,58 @@ To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `Swap
 - `packages/client/src/components/Layout.tsx` - Replaced custom connect logic with ConnectButton
 - `packages/client/src/vite-env.d.ts` - Added VITE_WALLETCONNECT_PROJECT_ID type
 - `.env.example` - Added VITE_WALLETCONNECT_PROJECT_ID
+
+---
+
+### Phase 17 Learnings (Manager API Keys)
+
+**Completed:** 2026-01-17
+
+#### Why API Keys
+
+1. **Better Security**: Managers no longer need to export their wallet private key for programmatic access. The private key should never leave the user's wallet.
+
+2. **Simpler Auth Flow**: Instead of signing SIWE messages for each session, managers can use a static API key with `Authorization: Bearer svk_xxx...`
+
+3. **Revocable**: API keys can be regenerated or revoked at any time without affecting the wallet.
+
+#### Implementation Details
+
+1. **Key Format**: API keys use the format `svk_<base64url-encoded-32-bytes>`:
+   - `svk_` prefix identifies it as a Swarm Vault key
+   - 32 random bytes encoded as base64url (~43 characters)
+   - Total length: ~47 characters
+
+2. **Storage Strategy**:
+   - Full key is hashed with bcrypt (cost factor 10) before storage
+   - Only the prefix (`svk_` + first 8 chars) is stored in plaintext for identification
+   - Full key is returned ONLY ONCE when generated
+
+3. **Auth Middleware Flow**:
+   - Check if token starts with `svk_` (API key) or not (JWT)
+   - For API keys: lookup user by prefix, verify bcrypt hash
+   - For JWTs: verify with jsonwebtoken as before
+
+4. **Database Fields Added to User**:
+   - `apiKeyHash` - bcrypt hash of the full API key
+   - `apiKeyPrefix` - First 12 chars (svk_ + 8) for identification
+   - `apiKeyCreatedAt` - Timestamp for auditing
+
+#### Key Files Created/Modified
+
+- `prisma/schema.prisma` - Added API key fields to User model
+- `prisma/migrations/20260117000000_add_api_key_fields/migration.sql` - Migration
+- `packages/server/package.json` - Added bcrypt dependency
+- `packages/server/src/middleware/auth.ts` - Updated to support API key auth
+- `packages/server/src/routes/auth.ts` - Added API key CRUD endpoints
+- `packages/client/src/pages/Settings.tsx` - Added API key management UI
+
+#### Security Considerations
+
+1. **One-Time Display**: The full API key is only shown once when generated. Users must copy it immediately.
+
+2. **Bcrypt Hashing**: Keys are hashed with bcrypt to protect against database leaks. Even if the hash is stolen, the original key cannot be recovered.
+
+3. **Prefix Lookup**: Using a prefix for lookup allows efficient database queries without exposing the full key in logs or queries.
+
+4. **Automatic Revocation**: Generating a new key automatically revokes the old one - no possibility of key accumulation.

@@ -13,6 +13,10 @@ model User {
   walletAddress   String   @unique
   twitterId       String?  @unique // Twitter user ID
   twitterUsername String?  // Twitter handle (@username)
+  // API key for programmatic access (hash stored, never plaintext)
+  apiKeyHash      String?  // bcrypt hash of the API key
+  apiKeyPrefix    String?  // First 8 chars for identification (e.g., "svk_abc1...")
+  apiKeyCreatedAt DateTime? // When the API key was generated
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

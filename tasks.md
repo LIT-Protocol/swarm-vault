@@ -573,6 +573,48 @@
 
 ---
 
+## Phase 17: Manager API Keys [COMPLETED]
+
+> **Goal:** Allow managers to generate API keys for programmatic access instead of requiring them to export their wallet private key and sign SIWE messages.
+
+### 17.1 Database Schema
+- [x] Add API key fields to User model
+  - `apiKeyHash` - bcrypt hash of the API key (never store plaintext)
+  - `apiKeyPrefix` - First 8 chars for identification (e.g., `svk_abc1...`)
+  - `apiKeyCreatedAt` - Timestamp when key was generated
+
+### 17.2 Backend API Key Endpoints
+- [x] `POST /api/auth/api-key/generate` - Generate new API key
+  - Creates random 32-byte key with prefix `svk_`
+  - Hashes with bcrypt and stores hash
+  - Returns full key ONLY ONCE in response
+  - Automatically revokes any existing key
+- [x] `GET /api/auth/api-key` - Get API key info (prefix, createdAt)
+  - Does NOT return the full key
+- [x] `DELETE /api/auth/api-key` - Revoke current API key
+
+### 17.3 Auth Middleware Updates
+- [x] Update auth middleware to accept API key in Authorization header
+  - Format: `Authorization: Bearer svk_xxxxx...`
+  - Validate by hashing provided key and comparing to stored hash
+  - Return same user info as JWT auth
+
+### 17.4 Frontend Settings UI
+- [x] Add "API Key" section to Settings page
+  - Show current key status (none, or prefix + created date)
+  - "Generate API Key" button (or "Regenerate" if one exists)
+- [x] Create API key generation modal
+  - Show full key ONLY ONCE with copy button
+  - Warning: "This is the only time you'll see this key"
+  - Confirm/close button
+- [x] Regenerate confirmation (generates new key, automatically revokes old one)
+
+### 17.5 Documentation Updates
+- [x] Update API docs with OpenAPI annotations for API key endpoints
+- [ ] Add API key section to manager trading guide (optional - users can figure it out)
+
+---
+
 ## Future Phases (Post-MVP)
 
 ### Phase 16: RainbowKit Integration [COMPLETED]

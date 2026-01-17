@@ -2,9 +2,10 @@ import { Router, Request, Response } from "express";
 import { SiweMessage, generateNonce } from "siwe";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../lib/env.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, API_KEY_PREFIX } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -42,47 +43,7 @@ function generatePKCE() {
   return { codeVerifier, codeChallenge };
 }
 
-/**
- * @openapi
- * /api/auth/nonce:
- *   post:
- *     tags: [Authentication]
- *     summary: Get SIWE nonce
- *     description: Generate a nonce for Sign-In With Ethereum (SIWE) authentication. The nonce expires in 5 minutes.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [address]
- *             properties:
- *               address:
- *                 type: string
- *                 pattern: "^0x[a-fA-F0-9]{40}$"
- *                 description: Ethereum wallet address
- *                 example: "0x1234567890abcdef1234567890abcdef12345678"
- *     responses:
- *       200:
- *         description: Nonce generated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     nonce:
- *                       type: string
- *                       description: Random nonce for SIWE message
- *                       example: "8fj2k9d0s"
- *       400:
- *         description: Invalid address
- */
+// POST /api/auth/nonce - Get SIWE nonce (frontend use only, not documented in API docs)
 router.post("/nonce", (req: Request, res: Response) => {
   const { address } = req.body;
 
@@ -106,55 +67,7 @@ router.post("/nonce", (req: Request, res: Response) => {
   });
 });
 
-/**
- * @openapi
- * /api/auth/login:
- *   post:
- *     tags: [Authentication]
- *     summary: Login with SIWE signature
- *     description: |
- *       Verify a signed SIWE (Sign-In With Ethereum) message and return a JWT token.
- *       The JWT token is valid for 7 days and should be included in the Authorization header
- *       for authenticated requests.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [message, signature]
- *             properties:
- *               message:
- *                 type: string
- *                 description: The prepared SIWE message that was signed
- *                 example: "swarm-vault.com wants you to sign in with your Ethereum account:\n0x1234...5678\n\nSign in to Swarm Vault\n\nURI: https://swarm-vault.com\nVersion: 1\nChain ID: 8453\nNonce: 8fj2k9d0s\nIssued At: 2024-01-15T00:00:00.000Z"
- *               signature:
- *                 type: string
- *                 description: The signature of the SIWE message
- *                 example: "0x..."
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     token:
- *                       type: string
- *                       description: JWT token for authenticated requests
- *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *       400:
- *         description: Invalid signature or expired nonce
- */
+// POST /api/auth/login - Login with SIWE signature (frontend use only, not documented in API docs)
 router.post("/login", async (req: Request, res: Response) => {
   const { message, signature } = req.body;
 
@@ -251,13 +164,15 @@ router.post("/login", async (req: Request, res: Response) => {
  * /api/auth/me:
  *   get:
  *     tags: [Authentication]
- *     summary: Get current user
- *     description: Get the authenticated user's profile information
+ *     summary: Verify API key and get user info
+ *     description: |
+ *       Verify your API key is valid and retrieve your user profile.
+ *       Use this endpoint to test your API key is working correctly.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User profile retrieved successfully
+ *         description: API key valid, user profile retrieved
  *         content:
  *           application/json:
  *             schema:
@@ -269,7 +184,7 @@ router.post("/login", async (req: Request, res: Response) => {
  *                 data:
  *                   $ref: "#/components/schemas/User"
  *       401:
- *         description: Unauthorized - invalid or missing token
+ *         description: Invalid or missing API key
  *       404:
  *         description: User not found
  */
@@ -488,6 +403,239 @@ router.post(
       res.status(500).json({
         success: false,
         error: "Failed to disconnect Twitter account",
+      });
+    }
+  }
+);
+
+// =============================================================================
+// API Key Management
+// =============================================================================
+
+/**
+ * @openapi
+ * /api/auth/api-key:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Get API key info
+ *     description: |
+ *       Get information about the user's current API key.
+ *       Returns the key prefix (for identification) and creation date.
+ *       The full API key is never returned.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: API key info retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hasApiKey:
+ *                       type: boolean
+ *                       description: Whether the user has an API key configured
+ *                     prefix:
+ *                       type: string
+ *                       description: First 12 chars of the API key for identification
+ *                       example: "svk_a1b2c3d4"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: When the API key was created
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/api-key", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: {
+        apiKeyPrefix: true,
+        apiKeyCreatedAt: true,
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        hasApiKey: !!user.apiKeyPrefix,
+        prefix: user.apiKeyPrefix,
+        createdAt: user.apiKeyCreatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to get API key info:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get API key info",
+    });
+  }
+});
+
+/**
+ * @openapi
+ * /api/auth/api-key/generate:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Generate new API key
+ *     description: |
+ *       Generate a new API key for programmatic access to the Swarm Vault API.
+ *
+ *       **IMPORTANT:** The full API key is only returned ONCE in this response.
+ *       Store it securely - you will not be able to retrieve it again.
+ *
+ *       If you already have an API key, generating a new one will automatically
+ *       revoke the old key.
+ *
+ *       Use the API key by including it in the Authorization header:
+ *       `Authorization: Bearer svk_xxxxx...`
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: API key generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     apiKey:
+ *                       type: string
+ *                       description: The full API key (shown only once!)
+ *                       example: "svk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
+ *                     prefix:
+ *                       type: string
+ *                       description: Key prefix for identification
+ *                       example: "svk_a1b2c3d4"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  "/api-key/generate",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      // Generate a random 32-byte API key
+      const randomBytes = crypto.randomBytes(32);
+      const keyBody = randomBytes.toString("base64url"); // URL-safe base64
+      const fullApiKey = `${API_KEY_PREFIX}${keyBody}`;
+
+      // Extract prefix for storage (first 8 chars of the body)
+      const prefix = `${API_KEY_PREFIX}${keyBody.slice(0, 8)}`;
+
+      // Hash the full key for secure storage
+      const saltRounds = 10;
+      const apiKeyHash = await bcrypt.hash(fullApiKey, saltRounds);
+
+      const now = new Date();
+
+      // Update user with the new API key (this automatically revokes any existing key)
+      await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: {
+          apiKeyHash,
+          apiKeyPrefix: prefix,
+          apiKeyCreatedAt: now,
+        },
+      });
+
+      // Return the full key ONLY ONCE
+      res.json({
+        success: true,
+        data: {
+          apiKey: fullApiKey,
+          prefix,
+          createdAt: now,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to generate API key:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate API key",
+      });
+    }
+  }
+);
+
+/**
+ * @openapi
+ * /api/auth/api-key:
+ *   delete:
+ *     tags: [Authentication]
+ *     summary: Revoke API key
+ *     description: |
+ *       Revoke the current API key. After revocation, the key can no longer
+ *       be used for authentication. You can generate a new key at any time.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: API key revoked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: "API key revoked"
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete(
+  "/api-key",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: {
+          apiKeyHash: null,
+          apiKeyPrefix: null,
+          apiKeyCreatedAt: null,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: { message: "API key revoked" },
+      });
+    } catch (error) {
+      console.error("Failed to revoke API key:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to revoke API key",
       });
     }
   }

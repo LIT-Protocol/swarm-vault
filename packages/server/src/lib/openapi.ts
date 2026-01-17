@@ -11,54 +11,39 @@ Swarm Vault API enables managers to execute transactions on behalf of multiple u
 
 ## Authentication
 
-All authenticated endpoints require a Bearer token in the Authorization header:
+All authenticated endpoints require an API key in the Authorization header:
 \`\`\`
-Authorization: Bearer <jwt_token>
+Authorization: Bearer svk_xxxxx...
 \`\`\`
 
-### Getting a Token
+### Getting an API Key
 
-1. **Get nonce**: POST /api/auth/nonce with your wallet address
-2. **Sign message**: Create and sign a SIWE (Sign-In With Ethereum) message with the nonce
-3. **Login**: POST /api/auth/login with the signed message to receive a JWT token
+1. Log in to the Swarm Vault web app at [swarm-vault.com](https://swarm-vault.com)
+2. Go to **Settings**
+3. Click **Generate API Key**
+4. Copy the API key immediately - it's only shown once!
 
-### Example Authentication Flow (JavaScript)
+**Important:** Store your API key securely. If you lose it, you'll need to generate a new one (which revokes the old key).
+
+### Using Your API Key
+
+Include the API key in the \`Authorization\` header for all requests:
 
 \`\`\`javascript
-import { SiweMessage } from 'siwe';
+const API_KEY = 'svk_your_api_key_here';
 
-// Step 1: Get nonce
-const nonceRes = await fetch('https://api.swarm-vault.com/api/auth/nonce', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ address: walletAddress })
+const response = await fetch('https://api.swarm-vault.com/api/swarms', {
+  headers: {
+    'Authorization': \`Bearer \${API_KEY}\`,
+    'Content-Type': 'application/json'
+  }
 });
-const { data: { nonce } } = await nonceRes.json();
-
-// Step 2: Create and sign SIWE message
-const message = new SiweMessage({
-  domain: 'swarm-vault.com',
-  address: walletAddress,
-  statement: 'Sign in to Swarm Vault',
-  uri: 'https://swarm-vault.com',
-  version: '1',
-  chainId: 8453, // Base Mainnet
-  nonce: nonce
-});
-const preparedMessage = message.prepareMessage();
-const signature = await wallet.signMessage(preparedMessage);
-
-// Step 3: Login
-const loginRes = await fetch('https://api.swarm-vault.com/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: preparedMessage, signature })
-});
-const { data: { token } } = await loginRes.json();
-
-// Use token for authenticated requests
-const headers = { Authorization: \`Bearer \${token}\` };
 \`\`\`
+
+### API Key Management
+
+- **Regenerate**: Generate a new key at any time from Settings. This automatically revokes the old key.
+- **Revoke**: Delete your API key from Settings if you no longer need programmatic access.
 
 ## Manager Operations
 
@@ -106,7 +91,7 @@ When creating custom transactions, use these placeholders:
     tags: [
       {
         name: "Authentication",
-        description: "SIWE authentication and JWT token management",
+        description: "API key management for programmatic access",
       },
       {
         name: "Swarms",
@@ -130,8 +115,9 @@ When creating custom transactions, use these placeholders:
         bearerAuth: {
           type: "http",
           scheme: "bearer",
-          bearerFormat: "JWT",
-          description: "JWT token obtained from /api/auth/login",
+          bearerFormat: "API Key",
+          description:
+            "API key obtained from Settings page. Format: svk_xxxxx...",
         },
       },
       schemas: {
