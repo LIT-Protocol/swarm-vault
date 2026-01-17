@@ -10,6 +10,8 @@ A platform that enables managers to execute transactions on behalf of multiple u
 - **Token Swaps**: Integrated 0x DEX aggregator for optimal swap routing
 - **Balance Tracking**: Real-time balance display via Alchemy
 - **Withdrawals**: Users can withdraw funds directly from their agent wallets
+- **Manager SDK**: TypeScript SDK for programmatic trading (`@swarmvault/sdk`)
+- **API Documentation**: Interactive API docs at `/api/docs`
 
 ## Tech Stack
 
@@ -106,6 +108,7 @@ swarm-vault/
 │   ├── client/          # Vite + React frontend
 │   ├── server/          # Express backend
 │   ├── shared/          # Shared types, utils, constants
+│   ├── sdk/             # TypeScript SDK for managers (@swarmvault/sdk)
 │   └── lit-actions/     # Lit Action source code
 ├── prisma/
 │   └── schema.prisma    # Database schema
@@ -139,6 +142,61 @@ swarm-vault/
 | `VITE_API_URL` | Backend API URL | Yes | `http://localhost:3001` |
 | `VITE_CHAIN_ID` | Target chain ID | Yes | `84532` |
 | `VITE_ZERODEV_PROJECT_ID` | ZeroDev project ID | Yes | `abc123` |
+
+## Programmatic Access for Managers
+
+Managers can programmatically execute swaps and transactions on behalf of their swarm members. There are two options:
+
+### Option 1: TypeScript SDK (Recommended for JS/TS projects)
+
+Install the SDK:
+
+```bash
+npm install @swarmvault/sdk
+```
+
+Quick example:
+
+```typescript
+import { SwarmVaultClient, BASE_MAINNET_TOKENS } from '@swarmvault/sdk';
+
+const client = new SwarmVaultClient({
+  apiKey: 'svk_your_api_key_here', // Get from Settings page
+});
+
+// Check holdings
+const holdings = await client.getSwarmHoldings('swarm-id');
+
+// Execute a swap (50% USDC to WETH)
+const result = await client.executeSwap('swarm-id', {
+  sellToken: BASE_MAINNET_TOKENS.USDC,
+  buyToken: BASE_MAINNET_TOKENS.WETH,
+  sellPercentage: 50,
+});
+
+// Wait for completion
+const tx = await client.waitForTransaction(result.transactionId);
+```
+
+See [packages/sdk/README.md](./packages/sdk/README.md) for full documentation.
+
+### Option 2: Direct API (Any language)
+
+Use the REST API directly with your API key or JWT:
+
+```bash
+# Get holdings
+curl -H "Authorization: Bearer svk_your_api_key" \
+  https://api.swarmvault.xyz/api/swarms/{id}/holdings
+
+# Execute swap
+curl -X POST -H "Authorization: Bearer svk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"sellToken":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","buyToken":"0x4200000000000000000000000000000000000006","sellPercentage":50}' \
+  https://api.swarmvault.xyz/api/swarms/{id}/swap/execute
+```
+
+Interactive API documentation is available at `/api/docs`. The OpenAPI spec is at `/api/openapi.json` (useful for LLMs and code generation).
 
 ## API Reference
 

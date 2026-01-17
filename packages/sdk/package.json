@@ -1,0 +1,61 @@
+{
+  "name": "@swarmvault/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Swarm Vault API - execute swaps and transactions on behalf of swarm members",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "example:holdings": "tsx examples/check-holdings.ts",
+    "example:swap": "tsx examples/swap-usdc-to-weth.ts"
+  },
+  "keywords": [
+    "swarmvault",
+    "web3",
+    "defi",
+    "smart-wallet",
+    "swap",
+    "sdk",
+    "api-client"
+  ],
+  "author": "Swarm Vault",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swarmvault/swarm-vault"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}

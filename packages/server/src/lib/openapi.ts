@@ -9,6 +9,38 @@ const options: swaggerJsdoc.Options = {
       description: `
 Swarm Vault API enables managers to execute transactions on behalf of multiple users on Base.
 
+## SDK vs Direct API
+
+### Option 1: TypeScript SDK (Recommended for JS/TS)
+
+For JavaScript/TypeScript projects, use the official SDK:
+
+\`\`\`bash
+npm install @swarmvault/sdk
+\`\`\`
+
+\`\`\`javascript
+import { SwarmVaultClient, BASE_MAINNET_TOKENS } from '@swarmvault/sdk';
+
+const client = new SwarmVaultClient({
+  apiKey: 'svk_your_api_key_here',
+});
+
+const result = await client.executeSwap('swarm-id', {
+  sellToken: BASE_MAINNET_TOKENS.USDC,
+  buyToken: BASE_MAINNET_TOKENS.WETH,
+  sellPercentage: 50,
+});
+
+const tx = await client.waitForTransaction(result.transactionId);
+\`\`\`
+
+See the [SDK README](https://github.com/swarm-vault/swarm-vault/tree/main/packages/sdk) for full documentation.
+
+### Option 2: Direct API (Any Language)
+
+Use the REST API directly by following this documentation.
+
 ## Authentication
 
 All authenticated endpoints require an API key in the Authorization header:

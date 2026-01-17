@@ -1673,3 +1673,121 @@ To re-enable: Uncomment the SAFE-related sections in `SwarmDetail.tsx` and `Swap
 3. **Prefix Lookup**: Using a prefix for lookup allows efficient database queries without exposing the full key in logs or queries.
 
 4. **Automatic Revocation**: Generating a new key automatically revokes the old one - no possibility of key accumulation.
+
+---
+
+### Phase 18 Learnings (Manager SDK Package)
+
+**Completed:** 2026-01-17
+
+#### Why an SDK
+
+1. **Developer Experience**: Direct API usage requires understanding REST conventions, authentication headers, error handling, and type definitions. The SDK abstracts all of this into simple method calls.
+
+2. **LLM-Friendly**: Managers can give the SDK documentation to an LLM to generate trading scripts without needing to understand the underlying API.
+
+3. **Type Safety**: Full TypeScript support with exported types for all requests and responses.
+
+4. **Convenience Features**: Built-in `waitForTransaction` method with polling, progress callbacks, and timeout handling.
+
+#### Package Architecture
+
+1. **Dual Format Build**: Using tsup to build both ESM and CJS formats:
+   ```typescript
+   // tsup.config.ts
+   export default defineConfig({
+     entry: ["src/index.ts"],
+     format: ["esm", "cjs"],
+     dts: true,
+   });
+   ```
+
+2. **Package Exports**: Modern package.json exports field for proper module resolution:
+   ```json
+   "exports": {
+     ".": {
+       "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+       "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+     }
+   }
+   ```
+
+3. **Zero Runtime Dependencies**: The SDK only requires native `fetch` (Node 18+) with no external dependencies, keeping bundle size minimal.
+
+#### Client Design
+
+1. **Authentication Flexibility**: Supports both API key (`svk_`) and JWT authentication:
+   ```typescript
+   const client = new SwarmVaultClient({ apiKey: 'svk_...' });
+   // or
+   const client = new SwarmVaultClient({ jwt: 'eyJ...' });
+   ```
+
+2. **Error Handling**: Custom `SwarmVaultError` class with error code, status code, and details:
+   ```typescript
+   try {
+     await client.getSwarmHoldings('invalid-id');
+   } catch (error) {
+     if (error instanceof SwarmVaultError) {
+       console.log(error.errorCode); // 'RES_003'
+       console.log(error.statusCode); // 404
+     }
+   }
+   ```
+
+3. **Transaction Polling**: `waitForTransaction` with configurable timeout, poll interval, and progress callback:
+   ```typescript
+   const tx = await client.waitForTransaction(txId, {
+     timeoutMs: 300000,
+     pollIntervalMs: 3000,
+     onPoll: (t) => console.log(`${t.status}: ${confirmed}/${total}`),
+   });
+   ```
+
+#### Key Files Created
+
+- `packages/sdk/package.json` - Package configuration with dual ESM/CJS exports
+- `packages/sdk/tsconfig.json` - TypeScript configuration extending root
+- `packages/sdk/tsup.config.ts` - Build configuration
+- `packages/sdk/src/index.ts` - Main entry point with all exports
+- `packages/sdk/src/client.ts` - SwarmVaultClient class implementation
+- `packages/sdk/src/types.ts` - All TypeScript types and constants
+- `packages/sdk/examples/swap-usdc-to-weth.ts` - Example: swap 50% USDC to WETH
+- `packages/sdk/examples/check-holdings.ts` - Example: view holdings across swarms
+- `packages/sdk/examples/README.md` - Examples documentation
+- `packages/sdk/README.md` - Comprehensive SDK documentation
+
+#### Documentation Updates
+
+- `README.md` - Added "Programmatic Access for Managers" section with SDK and API options
+- `packages/server/src/lib/openapi.ts` - Added SDK mention to API docs description
+
+#### SDK Methods
+
+**Authentication:**
+- `setApiKey(key)` - Set API key
+- `setJwt(token)` - Set JWT token
+- `getMe()` - Get authenticated user
+
+**Swarms:**
+- `listSwarms()` - List all swarms
+- `getSwarm(id)` - Get swarm details
+- `getSwarmMembers(id)` - Get swarm members (manager only)
+- `getSwarmHoldings(id)` - Get aggregate holdings (manager only)
+
+**Swaps:**
+- `previewSwap(swarmId, params)` - Preview swap without executing
+- `executeSwap(swarmId, params)` - Execute swap
+
+**Transactions:**
+- `executeTransaction(swarmId, template)` - Execute raw transaction
+- `listTransactions(swarmId)` - List swarm transactions
+- `getTransaction(id)` - Get transaction details
+- `waitForTransaction(id, options)` - Poll until completion
+
+#### Token Constants
+
+Exported common token addresses for convenience:
+- `NATIVE_ETH_ADDRESS` - Native ETH address for swaps
+- `BASE_MAINNET_TOKENS` - USDC, WETH, DAI, USDbC, cbETH on Base Mainnet
+- `BASE_SEPOLIA_TOKENS` - USDC, WETH on Base Sepolia testnet
