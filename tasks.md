@@ -627,17 +627,111 @@
 - [x] Replace custom connect button with RainbowKit's ConnectButton
 - [x] Update auth flow to work with RainbowKit's connection events
 
-### Phase 17: WalletConnect Integration
+## Phase 18: Manager SDK Package [NEXT]
+
+> **Goal:** Create a TypeScript SDK package (`@swarmvault/sdk`) that wraps the Swarm Vault API, making it easy for managers to programmatically execute swaps and transactions. The SDK should be simple enough that giving it to an LLM can generate trading scripts.
+
+### 18.1 SDK Package Setup
+- [ ] Create `packages/sdk` directory in monorepo
+- [ ] Initialize package.json with:
+  - Name: `@swarmvault/sdk`
+  - Main/module/types exports
+  - Dependencies: fetch (for Node.js compatibility)
+- [ ] Set up TypeScript configuration (extends root tsconfig)
+- [ ] Set up build tooling (tsup or similar for dual ESM/CJS output)
+- [ ] Add to pnpm workspace
+
+### 18.2 SDK Core Implementation
+- [ ] Create `SwarmVaultClient` class with:
+  - Constructor accepting API URL and API key (or JWT)
+  - Automatic Authorization header handling
+  - Error handling and typed responses
+- [ ] Implement authentication methods:
+  - `setApiKey(key: string)` - Set API key for auth
+  - `setJwt(token: string)` - Set JWT for auth
+  - `getMe()` - Get current user info
+- [ ] Implement swarm management methods:
+  - `listSwarms()` - List all swarms
+  - `getSwarm(id: string)` - Get swarm details
+  - `getSwarmMembers(id: string)` - Get swarm members (manager only)
+  - `getSwarmHoldings(id: string)` - Get aggregated token holdings
+
+### 18.3 SDK Swap Methods
+- [ ] Implement swap methods:
+  - `previewSwap(swarmId, params)` - Preview a swap with expected outcomes
+    - params: `{ sellToken, buyToken, sellPercentage, slippagePercentage }`
+    - Returns per-member preview with amounts
+  - `executeSwap(swarmId, params)` - Execute a swap
+    - Returns transaction ID for status tracking
+  - `getTransaction(id: string)` - Get transaction status and details
+  - `waitForTransaction(id: string, options?)` - Poll until transaction completes
+    - options: `{ timeoutMs?, pollIntervalMs? }`
+
+### 18.4 SDK Transaction Methods (Advanced)
+- [ ] Implement raw transaction methods:
+  - `executeTransaction(swarmId, template)` - Execute a transaction template
+    - template: ABI mode or raw calldata mode
+  - `listTransactions(swarmId)` - List swarm transactions
+
+### 18.5 Type Exports
+- [ ] Export all relevant types from shared package:
+  - `Swarm`, `SwarmMember`, `Membership`
+  - `Transaction`, `TransactionTarget`, `TransactionStatus`
+  - `SwapPreviewRequest`, `SwapPreviewResponse`
+  - `SwapExecuteRequest`, `SwapExecuteResponse`
+  - `TokenHoldings`, `TokenBalance`
+
+### 18.6 Example Scripts
+- [ ] Create `examples/` directory in SDK package
+- [ ] Create `swap-usdc-to-weth.ts` example:
+  - Connects with API key
+  - Gets swarm holdings to find USDC balance
+  - Previews swap of 50% USDC to WETH
+  - Logs preview results
+  - Executes swap
+  - Polls for completion and logs final result
+- [ ] Create `check-holdings.ts` example:
+  - Lists all swarms managed by the user
+  - For each swarm, displays aggregated token holdings
+- [ ] Create `README.md` in examples folder with usage instructions
+
+### 18.7 SDK Documentation
+- [ ] Create comprehensive README.md for SDK package:
+  - Installation instructions (`npm install @swarmvault/sdk`)
+  - Quick start guide
+  - API reference with all methods
+  - Authentication section (API key vs JWT)
+  - Error handling
+  - TypeScript usage
+- [ ] Add JSDoc comments to all public methods
+- [ ] Generate API reference docs (TypeDoc or similar)
+
+### 18.8 Website Documentation Updates
+- [ ] Update main README.md to mention SDK option
+- [ ] Add section to API docs distinguishing:
+  - Direct API usage (any language, use OpenAPI spec)
+  - SDK usage (JavaScript/TypeScript projects)
+- [ ] Add SDK installation and quick start to `/api/docs` description
+
+### 18.9 Testing & Publishing Prep
+- [ ] Add unit tests for SDK methods (mocked fetch)
+- [ ] Test SDK against running local server
+- [ ] Verify examples work end-to-end
+- [ ] Prepare for npm publishing (package.json metadata, LICENSE)
+
+---
+
+### Phase 19: WalletConnect Integration
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 18: Transaction Simulation
+### Phase 20: Transaction Simulation
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 19: Advanced Features
+### Phase 21: Advanced Features
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics
