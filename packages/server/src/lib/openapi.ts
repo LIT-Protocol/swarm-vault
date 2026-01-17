@@ -18,7 +18,7 @@ Authorization: Bearer svk_xxxxx...
 
 ### Getting an API Key
 
-1. Log in to the Swarm Vault web app at [swarm-vault.com](https://swarm-vault.com)
+1. Log in to the Swarm Vault web app at [swarmvault.xyz](https://swarmvault.xyz)
 2. Go to **Settings**
 3. Click **Generate API Key**
 4. Copy the API key immediately - it's only shown once!
@@ -32,7 +32,7 @@ Include the API key in the \`Authorization\` header for all requests:
 \`\`\`javascript
 const API_KEY = 'svk_your_api_key_here';
 
-const response = await fetch('https://api.swarm-vault.com/api/swarms', {
+const response = await fetch('https://api.swarmvault.xyz/api/swarms', {
   headers: {
     'Authorization': \`Bearer \${API_KEY}\`,
     'Content-Type': 'application/json'
@@ -84,7 +84,7 @@ When creating custom transactions, use these placeholders:
         description: "Local development server",
       },
       {
-        url: "https://api.swarm-vault.com",
+        url: "https://api.swarmvault.xyz",
         description: "Production server",
       },
     ],
