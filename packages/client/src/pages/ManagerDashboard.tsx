@@ -84,12 +84,25 @@ export default function ManagerDashboard() {
             Manage your swarms and execute batch transactions
           </p>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-        >
-          Create Swarm
-        </button>
+        <div className="flex items-center gap-3">
+          <a
+            href={import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/docs` : "http://localhost:3001/api/docs"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            API Docs
+          </a>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+          >
+            Create Swarm
+          </button>
+        </div>
       </div>
 
       <ErrorDisplay

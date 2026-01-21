@@ -1,6 +1,7 @@
 import { useAccount } from "wagmi";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import ProgrammaticTradingBox from "../components/ProgrammaticTradingBox";
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -19,16 +20,22 @@ export default function HomePage() {
       </div>
 
       {!isConnected ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-          <p className="text-blue-800">
-            Connect your wallet to get started
-          </p>
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <p className="text-blue-800">
+              Connect your wallet to get started
+            </p>
+          </div>
+          <ProgrammaticTradingBox />
         </div>
       ) : !isAuthenticated ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <p className="text-yellow-800">
-            Sign in with your wallet to access the dashboard
-          </p>
+        <div className="space-y-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <p className="text-yellow-800">
+              Sign in with your wallet to access the dashboard
+            </p>
+          </div>
+          <ProgrammaticTradingBox />
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
