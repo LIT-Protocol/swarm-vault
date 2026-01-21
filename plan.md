@@ -1363,7 +1363,7 @@ Replace custom wallet connection with RainbowKit (Phase 15), which handles these
 
 ## Project Status
 
-Phases 1-19 have been completed. The Swarm Vault MVP is now ready for deployment with:
+Phases 1-20 have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1384,6 +1384,7 @@ Phases 1-19 have been completed. The Swarm Vault MVP is now ready for deployment
 - **OpenAPI 3.1 spec for LLM consumption at `/api/openapi.json`**
 - **RainbowKit wallet connection UI for reliable wallet management**
 - **Private Swarms with invite-link-based access**
+- **Claude Skill for Manager Trading (`packages/claude-skill`)**
 
 ### Phase 13.5: SAFE UI Disabled for Launch
 
@@ -1856,3 +1857,110 @@ Exported common token addresses for convenience:
 2. **Regenerate Code**: Requires confirmation since old links stop working
 3. **Visibility Toggle**: Toggle switch in swarm detail for easy public/private switching
 4. **Copy Link Button**: One-click copy with "Copied!" feedback
+
+---
+
+### Phase 20 Learnings (Claude Skill for Manager Trading)
+
+**Completed:** 2026-01-21
+
+#### Why a Claude Skill
+
+1. **LLM-First Interface**: Managers can use natural language to execute trades. Instead of navigating a UI or writing code, they can say "swap 50% of USDC to WETH for my swarm."
+
+2. **Reusable Context**: The SKILL.md file provides comprehensive documentation that Claude can reference, including template placeholders, token addresses, and common operations.
+
+3. **CLI Scripts as Tools**: Each operation is a standalone script that Claude can invoke via Bash. Scripts output structured JSON for easy parsing.
+
+#### Skill Architecture
+
+1. **Package Structure**:
+   ```
+   packages/claude-skill/
+   ├── package.json          # Skill metadata and scripts
+   ├── SKILL.md              # Main context document for Claude
+   ├── README.md             # Human-readable documentation
+   ├── .env.example          # Environment template
+   ├── tsconfig.json         # TypeScript configuration
+   └── src/
+       ├── check-holdings.ts     # View swarm token balances
+       ├── preview-swap.ts       # Preview swap without executing
+       ├── execute-swap.ts       # Execute swap across members
+       ├── execute-transaction.ts # Execute raw transaction template
+       └── check-transaction.ts   # Monitor transaction status
+   ```
+
+2. **SDK Dependency**: Uses `@swarmvault/sdk` via workspace link (`workspace:*`). No code duplication - skill scripts are thin wrappers around SDK methods.
+
+3. **Token Symbol Resolution**: Scripts accept both token symbols (ETH, USDC, WETH) and addresses. A mapping table converts symbols to Base Mainnet addresses.
+
+#### SKILL.md Design
+
+1. **Comprehensive Context**: Single file containing everything Claude needs:
+   - Platform overview and key concepts
+   - Authentication instructions
+   - Command reference with examples
+   - Token addresses table
+   - Template placeholders reference with examples
+   - Transaction template structure (ABI mode and raw mode)
+   - Common operations walkthrough
+   - Error codes and troubleshooting
+
+2. **Structured for LLM Consumption**: Clear headings, code blocks, and tables make it easy for Claude to parse and reference specific sections.
+
+3. **Actionable Examples**: Each feature includes concrete examples that Claude can adapt to user requests.
+
+#### Script Design Patterns
+
+1. **Environment-Based Auth**: All scripts read `SWARM_VAULT_API_KEY` from environment. No hardcoded credentials.
+
+2. **Dual Output**: Scripts output both human-readable summaries and JSON for programmatic use:
+   ```
+   Results:
+     Total Sell Amount: 1000000000
+     Total Buy Amount: 450000000
+
+   --- JSON Output ---
+   { "totalSellAmount": "1000000000", ... }
+   ```
+
+3. **Error Handling**: Scripts catch `SwarmVaultError` and display error codes, messages, and details. Exit with non-zero code on failure.
+
+4. **Progress Feedback**: Long-running operations (swap execution, transaction waiting) show real-time status updates.
+
+#### Key Files Created
+
+- `packages/claude-skill/package.json` - Package configuration with pnpm scripts
+- `packages/claude-skill/SKILL.md` - Main skill context document
+- `packages/claude-skill/README.md` - Installation and usage instructions
+- `packages/claude-skill/.env.example` - Environment configuration template
+- `packages/claude-skill/tsconfig.json` - TypeScript configuration
+- `packages/claude-skill/src/check-holdings.ts` - List swarm holdings
+- `packages/claude-skill/src/preview-swap.ts` - Preview swap operation
+- `packages/claude-skill/src/execute-swap.ts` - Execute swap operation
+- `packages/claude-skill/src/execute-transaction.ts` - Execute raw transaction
+- `packages/claude-skill/src/check-transaction.ts` - Check transaction status
+
+#### Usage Patterns
+
+1. **Check Holdings First**: Always start by checking what tokens the swarm holds
+   ```bash
+   pnpm check-holdings <swarmId>
+   ```
+
+2. **Preview Before Execute**: Never execute without previewing first
+   ```bash
+   pnpm preview-swap <swarmId> USDC WETH 50 1
+   ```
+
+3. **Wait for Completion**: Use `--wait` flag to monitor until done
+   ```bash
+   pnpm check-transaction <txId> --wait
+   ```
+
+#### Future Enhancements
+
+- MCP server integration for Claude Desktop
+- Batch operation support (multiple swarms)
+- Strategy templates (DCA, rebalancing)
+- Notification webhooks for transaction completion

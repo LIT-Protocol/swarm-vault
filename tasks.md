@@ -789,17 +789,98 @@
 
 ---
 
-### Phase 20: WalletConnect Integration (Future)
+## Phase 20: Claude Skill for Manager Trading [COMPLETED]
+
+> **Goal:** Create a publishable Claude skill that allows managers to execute swaps and transactions through Claude (Claude Code, Claude Desktop, or any Claude interface with tool use). The skill should include comprehensive context documentation and use the existing `@swarmvault/sdk` for API interactions.
+
+### 20.1 Skill Package Setup
+- [x] Create `packages/claude-skill` directory in monorepo
+- [x] Create skill manifest/configuration file (package.json)
+  - Skill name: `@swarmvault/claude-skill`
+  - Description: Execute swaps and transactions for your Swarm Vault swarms
+  - Required tools: Bash (for running SDK commands via tsx)
+- [x] Set up skill context file structure
+- [x] Add to pnpm workspace (via `packages/*` wildcard)
+
+### 20.2 Skill Context Documentation
+- [x] Create main context document (`SKILL.md`) with:
+  - Overview of Swarm Vault and manager capabilities
+  - Authentication setup (API key generation instructions)
+  - Available operations summary
+- [x] Include Template Placeholders reference:
+  - `{{walletAddress}}` - Agent wallet address
+  - `{{ethBalance}}` - ETH balance (wei)
+  - `{{tokenBalance:0xAddr}}` - ERC20 token balance
+  - `{{percentage:ethBalance:N}}` - N% of ETH balance
+  - `{{percentage:tokenBalance:0xAddr:N}}` - N% of token balance
+  - `{{blockTimestamp}}` - Current block timestamp
+  - `{{deadline:N}}` - Timestamp + N seconds
+  - `{{slippage:amount:N}}` - Amount minus N% (for minAmountOut)
+- [x] Include token address constants for Base Mainnet and Sepolia
+- [x] Include common operation examples with full code
+
+### 20.3 Skill Scripts/Commands
+- [x] Create executable scripts for common operations:
+  - `check-holdings.ts` - List holdings for a swarm
+  - `preview-swap.ts` - Preview a swap without executing
+  - `execute-swap.ts` - Execute a swap
+  - `execute-transaction.ts` - Execute raw transaction template
+  - `check-transaction.ts` - Get transaction status
+- [x] Scripts should accept CLI arguments and output structured JSON
+- [x] Include proper error handling and user-friendly messages
+- [x] Ensure scripts work standalone (no build step needed with tsx)
+
+### 20.4 Skill Prompts/Instructions
+- [x] Create manager trading prompt that includes:
+  - When to use preview vs execute
+  - How to interpret holdings response
+  - How to construct transaction templates
+  - Safety checks (confirm before executing)
+  - Error handling guidance
+- [x] Create examples prompt with common scenarios (in SKILL.md):
+  - "Swap 50% of USDC to WETH for my swarm"
+  - "Check what tokens my swarm holds"
+  - "Execute a custom token transfer"
+  - "Wait for a transaction to complete"
+
+### 20.5 Configuration Template
+- [x] Create `.env.example` for skill users
+  - `SWARM_VAULT_API_KEY` - Manager's API key
+  - `SWARM_VAULT_API_URL` - API base URL (default: production)
+  - `SWARM_ID` - Default swarm ID (optional)
+- [x] Create setup instructions in README.md
+
+### 20.6 Skill Testing
+- [ ] Test skill context is readable by Claude (deferred - requires live testing)
+- [ ] Test each script works with valid API key (deferred - requires live testing)
+- [ ] Test common scenarios end-to-end (deferred - requires live testing)
+- [ ] Test error handling (deferred - requires live testing)
+
+### 20.7 Publishing & Distribution
+- [x] Create README.md with:
+  - What this skill enables
+  - Installation instructions
+  - Required setup (API key, environment variables)
+  - Usage examples
+  - Troubleshooting guide
+- [x] Prepare for distribution:
+  - GitHub repository structure (part of monorepo)
+  - Uses workspace SDK dependency
+- [ ] Add link to skill from main Swarm Vault docs (deferred)
+
+---
+
+### Phase 21: WalletConnect Integration (Future)
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 21: Transaction Simulation (Future)
+### Phase 22: Transaction Simulation (Future)
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 22: Advanced Features (Future)
+### Phase 23: Advanced Features (Future)
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics

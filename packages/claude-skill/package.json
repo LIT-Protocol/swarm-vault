@@ -1,0 +1,30 @@
+{
+  "name": "@swarmvault/claude-skill",
+  "version": "1.0.0",
+  "description": "Claude skill for Swarm Vault manager trading - execute swaps and transactions through Claude",
+  "type": "module",
+  "scripts": {
+    "check-holdings": "tsx src/check-holdings.ts",
+    "preview-swap": "tsx src/preview-swap.ts",
+    "execute-swap": "tsx src/execute-swap.ts",
+    "execute-transaction": "tsx src/execute-transaction.ts",
+    "check-transaction": "tsx src/check-transaction.ts"
+  },
+  "dependencies": {
+    "@swarmvault/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "swarm-vault",
+    "claude",
+    "skill",
+    "trading",
+    "defi",
+    "base",
+    "ethereum"
+  ],
+  "license": "MIT"
+}
