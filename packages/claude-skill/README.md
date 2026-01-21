@@ -1,197 +1,97 @@
 # @swarmvault/claude-skill
 
-A Claude skill for Swarm Vault manager trading. Execute swaps and transactions on behalf of your swarm members through Claude.
-
-## What This Skill Enables
-
-With this skill, Claude can help you:
-
-- **Check holdings** across all your swarm members
-- **Preview swaps** before executing them
-- **Execute token swaps** (e.g., "swap 50% of USDC to WETH")
-- **Execute custom transactions** using template placeholders
-- **Monitor transaction status** until completion
+A Claude Code skill for Swarm Vault manager trading. Execute swaps and transactions using natural language.
 
 ## Installation
 
-### For Claude Code
-
-1. Clone or copy this skill to your project:
-
 ```bash
-# From the swarm-vault monorepo
-cd packages/claude-skill
-pnpm install
+npx skills add @swarmvault/claude-skill
 ```
 
-2. Configure your environment:
+## Setup
 
-```bash
-cp .env.example .env
-# Edit .env and add your SWARM_VAULT_API_KEY
-```
+1. **Get your API key** from [swarmvault.xyz/settings](https://swarmvault.xyz/settings)
 
-3. Add the skill context to Claude Code:
+2. **Set your environment variable:**
+   ```bash
+   export SWARM_VAULT_API_KEY="svk_your_api_key_here"
+   ```
 
-```bash
-# Point Claude Code to the SKILL.md file
-claude --add-context ./SKILL.md
-```
+3. **Start using Claude Code** - just ask what you want to do!
 
-### For Standalone Use
+## Usage
 
-1. Install dependencies:
+Once installed, you can ask Claude things like:
 
-```bash
-npm install @swarmvault/sdk tsx
-```
+- "What tokens does my swarm hold?"
+- "Preview swapping 50% of USDC to WETH"
+- "Execute a swap of all ETH to USDC with 2% slippage"
+- "Check the status of my last transaction"
 
-2. Set environment variables:
-
-```bash
-export SWARM_VAULT_API_KEY="svk_your_api_key_here"
-```
-
-3. Run scripts directly:
-
-```bash
-npx tsx src/check-holdings.ts <swarmId>
-```
-
-## Getting Your API Key
-
-1. Go to [https://swarmvault.xyz/settings](https://swarmvault.xyz/settings)
-2. Connect your wallet (the one you use to manage swarms)
-3. Click "Generate API Key"
-4. Copy the key immediately (it's only shown once!)
-
-## Available Commands
-
-### Check Holdings
-
-View what tokens your swarm members hold:
-
-```bash
-pnpm check-holdings                    # List all your swarms
-pnpm check-holdings <swarmId>          # Get holdings for specific swarm
-```
-
-### Preview Swap
-
-Always preview before executing:
-
-```bash
-pnpm preview-swap <swarmId> USDC WETH 50 1
-#                           sell buy  %  slippage
-```
-
-### Execute Swap
-
-Execute a swap across all member wallets:
-
-```bash
-pnpm execute-swap <swarmId> USDC WETH 50 1
-```
-
-### Execute Transaction
-
-Execute a custom transaction template:
-
-```bash
-pnpm execute-transaction <swarmId> ./template.json
-pnpm execute-transaction <swarmId> --inline '{"mode":"abi",...}'
-```
-
-### Check Transaction
-
-Monitor transaction status:
-
-```bash
-pnpm check-transaction <txId>          # Check current status
-pnpm check-transaction <txId> --wait   # Wait for completion
-```
-
-## Token Symbols
-
-The following token symbols are supported (Base Mainnet):
-
-| Symbol | Token |
-|--------|-------|
-| ETH | Native ETH |
-| WETH | Wrapped ETH |
-| USDC | USD Coin |
-| DAI | Dai Stablecoin |
-| USDbC | Bridged USDC |
-| cbETH | Coinbase ETH |
-
-Or use full token addresses (0x...).
-
-## Template Placeholders
-
-When using `execute-transaction`, you can use these placeholders:
-
-| Placeholder | Description |
-|-------------|-------------|
-| `{{walletAddress}}` | Agent wallet address |
-| `{{ethBalance}}` | ETH balance in wei |
-| `{{tokenBalance:0xAddr}}` | ERC20 token balance |
-| `{{percentage:ethBalance:N}}` | N% of ETH balance |
-| `{{percentage:tokenBalance:0xAddr:N}}` | N% of token balance |
-| `{{blockTimestamp}}` | Current block timestamp |
-| `{{deadline:N}}` | Timestamp + N seconds |
-| `{{slippage:amount:N}}` | Amount minus N% |
-
-See [SKILL.md](./SKILL.md) for detailed examples.
+Claude will use the skill to execute the appropriate commands and interpret the results for you.
 
 ## Example Workflow
 
-```bash
-# 1. Check what tokens your swarm holds
-pnpm check-holdings my-swarm-id
+```
+You: What swarms do I manage?
 
-# 2. Preview swapping 50% of USDC to WETH
-pnpm preview-swap my-swarm-id USDC WETH 50 1
+Claude: Let me check your swarms...
+[runs check-holdings]
+You manage 2 swarms:
+1. Alpha Traders (12 members, 5.2 ETH, 10,000 USDC)
+2. DeFi Squad (8 members, 2.1 ETH, 5,000 USDC)
 
-# 3. If preview looks good, execute the swap
-pnpm execute-swap my-swarm-id USDC WETH 50 1
+You: Preview swapping 50% of USDC to WETH for Alpha Traders
 
-# 4. Transaction ID is returned, monitor until complete
-pnpm check-transaction <txId> --wait
+Claude: [runs preview-swap]
+Preview for Alpha Traders:
+- Selling: 5,000 USDC (50% of holdings)
+- Buying: ~1.85 WETH (estimated)
+- Members affected: 12
+- All members have sufficient balance
+
+You: Execute that swap
+
+Claude: [runs execute-swap]
+Swap initiated! Transaction ID: abc-123
+Waiting for confirmation...
+✓ 12/12 members confirmed
+Swap completed successfully!
 ```
 
-## Using with Claude
+## Available Commands
 
-Once configured, you can ask Claude natural language questions like:
+The skill provides these commands that Claude can use:
 
-- "What tokens does my swarm hold?"
-- "Preview swapping 25% of our ETH to USDC"
-- "Execute a swap of all USDC to WETH with 2% slippage"
-- "Check the status of transaction abc-123"
+| Command | Description |
+|---------|-------------|
+| `check-holdings [swarmId]` | View token holdings |
+| `preview-swap <swarmId> <sell> <buy> [%] [slippage]` | Preview a swap |
+| `execute-swap <swarmId> <sell> <buy> [%] [slippage]` | Execute a swap |
+| `execute-transaction <swarmId> <template>` | Execute raw transaction |
+| `check-transaction <txId> [--wait]` | Check transaction status |
 
-Claude will use the appropriate commands and interpret the results for you.
+## Token Symbols
 
-## Troubleshooting
+You can use these symbols instead of addresses:
 
-### "SWARM_VAULT_API_KEY environment variable is required"
-
-Set your API key:
-```bash
-export SWARM_VAULT_API_KEY="svk_..."
-```
-
-### "Not a manager of this swarm"
-
-You can only execute trades for swarms you manage. Check you're using the correct API key.
-
-### "Insufficient balance"
-
-One or more members don't have enough tokens. Preview first to see per-member details.
+- `ETH` - Native ETH
+- `WETH` - Wrapped ETH
+- `USDC` - USD Coin
+- `DAI` - Dai Stablecoin
+- `USDbC` - Bridged USDC
+- `cbETH` - Coinbase ETH
 
 ## Documentation
 
-- [SKILL.md](./SKILL.md) - Full skill context with all features documented
-- [SDK README](../sdk/README.md) - Underlying SDK documentation
-- [API Docs](https://api.swarmvault.xyz/api/docs) - Full API reference
+For advanced usage and template placeholders, see [SKILL.md](./SKILL.md).
+
+## Links
+
+- [Swarm Vault](https://swarmvault.xyz)
+- [API Documentation](https://api.swarmvault.xyz/api/docs)
+- [JavaScript SDK](https://www.npmjs.com/package/@swarmvault/sdk)
+- [GitHub](https://github.com/LIT-Protocol/swarm-vault)
 
 ## License
 

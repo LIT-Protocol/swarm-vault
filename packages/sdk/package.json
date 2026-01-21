@@ -1,6 +1,6 @@
 {
   "name": "@swarmvault/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "TypeScript SDK for Swarm Vault API - execute swaps and transactions on behalf of swarm members",
   "type": "module",
   "main": "./dist/index.cjs",
