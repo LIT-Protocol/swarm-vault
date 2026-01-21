@@ -12,7 +12,7 @@ export default function About() {
         <h1 className="text-4xl font-bold text-gray-900">About Swarm Vault</h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
           Coordinate token swaps across multiple wallets with a single transaction.
-          Built for copy-trading communities and fund managers on Base.
+          Built for copy-trading communities and managers on Base.
         </p>
       </div>
 
