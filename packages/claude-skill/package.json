@@ -48,5 +48,8 @@
   },
   "homepage": "https://swarmvault.xyz",
   "author": "Lit Protocol",
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
