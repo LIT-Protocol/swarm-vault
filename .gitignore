@@ -39,3 +39,6 @@ prisma/migrations/**/migration_lock.toml
 *.pem
 
 packages/server/.lit-auth-storage
+
+# Generated API docs
+packages/server/public

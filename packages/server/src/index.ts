@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import { existsSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
@@ -12,6 +15,9 @@ import { proposalsRouter } from "./routes/proposals.js";
 import { pollPendingTransactions } from "./lib/transactionExecutor.js";
 import { swaggerSpec } from "./lib/openapi.js";
 import { env } from "./lib/env.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const publicDir = join(__dirname, "..", "public");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,61 +37,16 @@ app.get("/api/openapi.json", (_req, res) => {
   res.json(swaggerSpec);
 });
 
-// Custom API docs page with LLM-friendly additions
+// Static API documentation (generated at build time with Redocly)
+const staticDocsPath = join(publicDir, "docs.html");
 app.get("/api/docs", (_req, res) => {
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Swarm Vault API Documentation</title>
-  <style>
-    .llm-json-link {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      z-index: 9999;
-      background: #8b5cf6;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transition: background 0.2s;
-    }
-    .llm-json-link:hover {
-      background: #7c3aed;
-    }
-  </style>
-</head>
-<body>
-  <!--
-    LLM / AI Agent Notice:
-    If you cannot render JavaScript, the interactive documentation below will not display.
-    To access the complete API specification in machine-readable format, please fetch:
-    https://api.swarmvault.xyz/api/openapi.json
-
-    This OpenAPI 3.1 JSON specification contains all endpoints, request/response schemas,
-    and authentication details for the Swarm Vault Manager API.
-  -->
-
-  <a href="/api/openapi.json" class="llm-json-link" target="_blank">
-    📄 OpenAPI JSON (for LLMs)
-  </a>
-
-  <script
-    id="api-reference"
-    type="application/json"
-    data-url="/api/openapi.json"
-    data-configuration='{"theme":"purple","layout":"modern","defaultHttpClient":{"targetKey":"js","clientKey":"fetch"}}'
-  ></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-</body>
-</html>`;
-  res.type("html").send(html);
+  if (existsSync(staticDocsPath)) {
+    res.sendFile(staticDocsPath);
+  } else {
+    res.status(404).send(
+      `Static documentation not yet generated. Run "pnpm generate-docs" in the server package.`
+    );
+  }
 });
 
 // Routes
