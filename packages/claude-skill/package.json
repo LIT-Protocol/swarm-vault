@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "description": "Claude skill for Swarm Vault manager trading - execute swaps and transactions through Claude",
   "type": "module",
+  "bin": {
+    "swarm-check-holdings": "./src/check-holdings.ts",
+    "swarm-preview-swap": "./src/preview-swap.ts",
+    "swarm-execute-swap": "./src/execute-swap.ts",
+    "swarm-execute-transaction": "./src/execute-transaction.ts",
+    "swarm-check-transaction": "./src/check-transaction.ts"
+  },
   "scripts": {
     "check-holdings": "tsx src/check-holdings.ts",
     "preview-swap": "tsx src/preview-swap.ts",
@@ -10,21 +17,36 @@
     "execute-transaction": "tsx src/execute-transaction.ts",
     "check-transaction": "tsx src/check-transaction.ts"
   },
+  "files": [
+    "src",
+    "SKILL.md",
+    "README.md",
+    ".env.example"
+  ],
   "dependencies": {
-    "@swarmvault/sdk": "workspace:*"
+    "@swarmvault/sdk": "^1.0.0",
+    "tsx": "^4.7.0"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },
   "keywords": [
     "swarm-vault",
     "claude",
+    "claude-code",
     "skill",
     "trading",
     "defi",
     "base",
-    "ethereum"
+    "ethereum",
+    "ai-trading"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LIT-Protocol/swarm-vault.git",
+    "directory": "packages/claude-skill"
+  },
+  "homepage": "https://swarmvault.xyz",
+  "author": "Lit Protocol",
   "license": "MIT"
 }

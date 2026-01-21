@@ -21,6 +21,19 @@ importers:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@20.19.27)
 
+  packages/claude-skill:
+    dependencies:
+      '@swarmvault/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   packages/client:
     dependencies:
       '@rainbow-me/rainbowkit':
