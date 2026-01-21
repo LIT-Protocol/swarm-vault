@@ -1363,7 +1363,7 @@ Replace custom wallet connection with RainbowKit (Phase 15), which handles these
 
 ## Project Status
 
-All 16 phases have been completed. The Swarm Vault MVP is now ready for deployment with:
+Phases 1-19 have been completed. The Swarm Vault MVP is now ready for deployment with:
 - Full authentication flow (SIWE)
 - Swarm creation and management
 - User membership system
@@ -1383,6 +1383,7 @@ All 16 phases have been completed. The Swarm Vault MVP is now ready for deployme
 - **Interactive API documentation (Scalar) at `/api/docs`**
 - **OpenAPI 3.1 spec for LLM consumption at `/api/openapi.json`**
 - **RainbowKit wallet connection UI for reliable wallet management**
+- **Private Swarms with invite-link-based access**
 
 ### Phase 13.5: SAFE UI Disabled for Launch
 
@@ -1791,3 +1792,67 @@ Exported common token addresses for convenience:
 - `NATIVE_ETH_ADDRESS` - Native ETH address for swaps
 - `BASE_MAINNET_TOKENS` - USDC, WETH, DAI, USDbC, cbETH on Base Mainnet
 - `BASE_SEPOLIA_TOKENS` - USDC, WETH on Base Sepolia testnet
+
+---
+
+### Phase 19 Learnings (Private Swarms)
+
+**Completed:** 2026-01-21
+
+#### Why Private Swarms
+
+1. **Default Privacy**: Most swarms will be created for specific communities or groups, not for public discovery. Making swarms private by default protects managers from unwanted members.
+
+2. **Invite-Based Access**: The invite link system allows managers to share access with specific users through any channel (Discord, Twitter DMs, etc.) without requiring an on-chain allowlist.
+
+3. **Flexible Visibility**: Managers can toggle between public and private at any time, supporting different community strategies.
+
+#### Implementation Details
+
+1. **Database Schema**:
+   - `isPublic` boolean field (default: false) - whether swarm appears in public discovery
+   - `inviteCode` string field (unique) - 12-character alphanumeric code for invite links
+   - Migration generates invite codes for existing swarms
+
+2. **Invite Code Generation**: Using `crypto.randomBytes(9).toString("base64url").slice(0, 12)` for 12-character URL-safe codes with ~66 bits of entropy.
+
+3. **Backend Access Control**:
+   - `GET /api/swarms` - Returns public swarms + user's managed swarms (OR logic)
+   - `GET /api/swarms/:id` - Returns 404 for private swarms unless user is manager or member
+   - `POST /api/swarms/:id/join` - Requires invite code for private swarms (managers exempt)
+   - `GET /api/swarms/invite/:inviteCode` - Allows previewing swarm before joining
+
+4. **Frontend Join Flow**:
+   - `/join/:inviteCode` route shows swarm preview with manager info
+   - Passes invite code when joining to backend for validation
+   - Handles already-member state gracefully
+
+#### Key Files Created
+
+- `prisma/migrations/20260121000000_add_private_swarms/migration.sql` - Database migration
+- `packages/client/src/pages/JoinByInvite.tsx` - Join via invite link page
+
+#### Key Files Modified
+
+- `prisma/schema.prisma` - Added isPublic, inviteCode to Swarm
+- `packages/shared/src/types/index.ts` - Added visibility types, schemas, error codes
+- `packages/server/src/routes/swarms.ts` - Added visibility endpoints, access control
+- `packages/server/src/routes/memberships.ts` - Added invite code validation
+- `packages/server/src/middleware/errorHandler.ts` - Added PERM_006, PERM_007 error messages
+- `packages/client/src/components/CreateSwarmModal.tsx` - Added public checkbox
+- `packages/client/src/pages/SwarmDiscovery.tsx` - Show visibility badges
+- `packages/client/src/pages/ManagerDashboard.tsx` - Show visibility badges
+- `packages/client/src/pages/SwarmDetail.tsx` - Visibility controls, invite link management
+- `packages/client/src/App.tsx` - Added /join/:inviteCode route
+
+#### New Error Codes
+
+- `PERM_006` (INVITE_CODE_REQUIRED) - Joining private swarm without invite code
+- `PERM_007` (INVALID_INVITE_CODE) - Invite code doesn't match swarm's code
+
+#### UX Design Decisions
+
+1. **Invite Links**: Format is `{baseUrl}/join/{inviteCode}` - simple and sharable
+2. **Regenerate Code**: Requires confirmation since old links stop working
+3. **Visibility Toggle**: Toggle switch in swarm detail for easy public/private switching
+4. **Copy Link Button**: One-click copy with "Copied!" feedback

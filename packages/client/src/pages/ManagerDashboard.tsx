@@ -10,6 +10,7 @@ interface SwarmListItem {
   id: string;
   name: string;
   description: string;
+  isPublic: boolean;
   createdAt: string;
   managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
@@ -134,9 +135,20 @@ export default function ManagerDashboard() {
               to={`/manager/swarms/${swarm.id}`}
               className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {swarm.name}
-              </h3>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {swarm.name}
+                </h3>
+                <span
+                  className={`px-2 py-1 text-xs font-medium rounded ${
+                    swarm.isPublic
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {swarm.isPublic ? "Public" : "Private"}
+                </span>
+              </div>
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">
                 {swarm.description}
               </p>

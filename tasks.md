@@ -721,17 +721,85 @@
 
 ---
 
-### Phase 19: WalletConnect Integration
+## Phase 19: Private Swarms [COMPLETED]
+
+> **Goal:** Make swarms private by default. Managers can share invite links to allow specific users to join. Public swarms can be discovered and joined by anyone.
+
+### 19.1 Database Schema Updates
+- [x] Add `isPublic` boolean field to Swarm model (default: `false`)
+- [x] Add `inviteCode` string field to Swarm model (unique, nullable)
+- [x] Create migration that sets `isPublic = false` for all existing swarms
+- [x] Generate invite codes for existing swarms (or leave null until manager requests)
+
+### 19.2 Backend Endpoints
+- [x] Update `POST /api/swarms` - Create swarm
+  - Accept `isPublic` boolean in request body (default: `false`)
+  - Auto-generate `inviteCode` for private swarms
+- [x] Update `GET /api/swarms` - List swarms
+  - Only return public swarms (`isPublic = true`) to non-managers
+  - Managers see their own swarms regardless of visibility
+- [x] Update `GET /api/swarms/:id` - Get swarm details
+  - Return swarm if public, or if user is manager, or if user is member
+  - Return 404 for private swarms user doesn't have access to
+- [x] Create `GET /api/swarms/invite/:inviteCode` - Get swarm by invite code
+  - Returns swarm details for valid invite code
+  - Allows users to preview private swarm before joining
+- [x] Update `POST /api/swarms/:id/join` - Join swarm
+  - If swarm is private, require `inviteCode` in request body
+  - Validate invite code matches swarm's invite code
+  - Public swarms can be joined without invite code
+- [x] Create `POST /api/swarms/:id/invite/regenerate` - Regenerate invite code
+  - Manager only
+  - Invalidates old invite link, generates new code
+- [x] Create `PATCH /api/swarms/:id/visibility` - Update swarm visibility
+  - Manager only
+  - Toggle `isPublic` setting
+
+### 19.3 Frontend - Create Swarm Modal
+- [x] Add "Public" checkbox to CreateSwarmModal
+  - Label: "Public Swarm" with description based on state
+  - Unchecked by default (swarms are private by default)
+- [x] Show info text explaining private vs public
+
+### 19.4 Frontend - Swarm Discovery
+- [x] Update SwarmDiscovery page to show public swarms
+- [x] Backend filters to only show public swarms to non-managers
+- [x] Show Private badge for manager's private swarms in list
+
+### 19.5 Frontend - Manager Dashboard
+- [x] Show visibility status (Public/Private badge) on swarm cards
+- [x] Add "Copy Invite Link" button in swarm detail page
+  - Generates link: `{baseUrl}/join/{inviteCode}`
+- [x] Add "Regenerate Link" option with confirmation
+- [x] Add toggle to change swarm visibility (public/private)
+
+### 19.6 Frontend - Join via Invite Link
+- [x] Create `/join/:inviteCode` route
+- [x] Fetch swarm details using invite code
+- [x] Show swarm preview (name, description, manager Twitter)
+- [x] "Join Swarm" button initiates normal join flow
+- [x] Handle invalid/expired invite codes gracefully
+
+### 19.7 Testing
+- [ ] Test private swarm creation with invite code generation
+- [ ] Test joining private swarm via invite link
+- [ ] Test that private swarms don't appear in public discovery
+- [ ] Test invite code regeneration invalidates old links
+- [ ] Test toggling visibility between public/private
+
+---
+
+### Phase 20: WalletConnect Integration (Future)
 - [ ] Add WalletConnect/Reown SDK
 - [ ] Create "Connect to dApp" flow
 - [ ] Allow user to sign transactions from their agent wallet
 
-### Phase 20: Transaction Simulation
+### Phase 21: Transaction Simulation (Future)
 - [ ] Integrate Alchemy simulation API
 - [ ] Add simulation check to Lit Action
 - [ ] Block suspicious transactions
 
-### Phase 21: Advanced Features
+### Phase 22: Advanced Features (Future)
 - [ ] Spending limits per user
 - [ ] Analytics dashboard
 - [ ] Swarm performance metrics

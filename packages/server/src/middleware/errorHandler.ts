@@ -42,6 +42,8 @@ const USER_FRIENDLY_MESSAGES: Record<ErrorCode, string> = {
   [ErrorCode.NOT_MEMBER]: "You must be a member of this swarm",
   [ErrorCode.ALREADY_MEMBER]: "You are already a member of this swarm",
   [ErrorCode.TWITTER_NOT_LINKED]: "Twitter account not linked",
+  [ErrorCode.INVITE_CODE_REQUIRED]: "An invite code is required to join this private swarm",
+  [ErrorCode.INVALID_INVITE_CODE]: "Invalid or expired invite code",
 
   // External services
   [ErrorCode.LIT_ERROR]: "Key signing service is temporarily unavailable",

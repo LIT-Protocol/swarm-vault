@@ -16,6 +16,7 @@ export default function CreateSwarmModal({
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +44,11 @@ export default function CreateSwarmModal({
       await api.post("/api/swarms", {
         name,
         description,
+        isPublic,
       });
       setName("");
       setDescription("");
+      setIsPublic(false);
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create swarm");
@@ -58,6 +61,7 @@ export default function CreateSwarmModal({
     if (!isLoading) {
       setName("");
       setDescription("");
+      setIsPublic(false);
       setError(null);
       onClose();
     }
@@ -157,6 +161,30 @@ export default function CreateSwarmModal({
                 placeholder="Describe what this swarm is for..."
                 disabled={isLoading}
               />
+            </div>
+
+            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="isPublic"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                disabled={isLoading}
+                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <div>
+                <label
+                  htmlFor="isPublic"
+                  className="block text-sm font-medium text-gray-900 cursor-pointer"
+                >
+                  Public Swarm
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {isPublic
+                    ? "Anyone can discover and join this swarm"
+                    : "Only users with an invite link can join this swarm"}
+                </p>
+              </div>
             </div>
 
             {isLoading && (

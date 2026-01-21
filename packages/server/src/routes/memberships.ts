@@ -11,6 +11,7 @@ const router = Router();
 const JoinSwarmSchema = z.object({
   agentWalletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address"),
   sessionKeyApproval: z.string().min(1, "Session key approval is required"),
+  inviteCode: z.string().optional(),
 });
 
 /**
@@ -84,7 +85,7 @@ router.post(
         return;
       }
 
-      const { agentWalletAddress, sessionKeyApproval } = parseResult.data;
+      const { agentWalletAddress, sessionKeyApproval, inviteCode } = parseResult.data;
 
       // Check if swarm exists
       const swarm = await prisma.swarm.findUnique({
@@ -100,6 +101,32 @@ router.post(
           error: "Swarm not found",
         });
         return;
+      }
+
+      // If swarm is private, require valid invite code
+      if (!swarm.isPublic) {
+        // Managers can join their own swarm without invite code
+        const isManager = swarm.managers.some((m: { userId: string }) => m.userId === userId);
+
+        if (!isManager) {
+          if (!inviteCode) {
+            res.status(403).json({
+              success: false,
+              error: "This is a private swarm. An invite code is required to join.",
+              errorCode: "PERM_006",
+            });
+            return;
+          }
+
+          if (inviteCode !== swarm.inviteCode) {
+            res.status(403).json({
+              success: false,
+              error: "Invalid invite code",
+              errorCode: "PERM_007",
+            });
+            return;
+          }
+        }
       }
 
       // Check if user is already a member

@@ -32,6 +32,9 @@ model Swarm {
   litPkpPublicKey String
   litPkpTokenId   String
   litPkpEthAddress String  // ETH address derived from PKP public key
+  // Visibility and invite settings
+  isPublic        Boolean  @default(false) // Whether swarm is publicly discoverable
+  inviteCode      String?  @unique          // Unique code for joining private swarms
   // Gnosis SAFE integration for multi-sig approval
   safeAddress       String?  // Gnosis SAFE address for sign-off
   requireSafeSignoff Boolean @default(false) // Whether manager actions require SAFE approval

@@ -8,6 +8,7 @@ import SwarmDiscovery from "./pages/SwarmDiscovery";
 import MySwarms from "./pages/MySwarms";
 import MembershipDetail from "./pages/MembershipDetail";
 import Settings from "./pages/Settings";
+import JoinByInvite from "./pages/JoinByInvite";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
           }
         />
         <Route path="swarms" element={<SwarmDiscovery />} />
+        <Route path="join/:inviteCode" element={<JoinByInvite />} />
         <Route
           path="my-swarms"
           element={

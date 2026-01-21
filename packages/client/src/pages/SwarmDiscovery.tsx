@@ -12,6 +12,7 @@ interface SwarmListItem {
   id: string;
   name: string;
   description: string;
+  isPublic: boolean;
   createdAt: string;
   managers: { id: string; walletAddress: string; twitterUsername?: string | null }[];
   memberCount: number;
@@ -177,7 +178,7 @@ export default function SwarmDiscovery() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Discover Swarms</h1>
           <p className="text-gray-600 mt-1">
-            Browse and join swarms managed by trusted parties
+            Browse and join public swarms managed by trusted parties
           </p>
         </div>
         {isAuthenticated && (
@@ -244,16 +245,23 @@ export default function SwarmDiscovery() {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {swarm.name}
                 </h3>
-                {swarm.isManager && (
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                    Manager
-                  </span>
-                )}
-                {isMember(swarm.id) && !swarm.isManager && (
-                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                    Member
-                  </span>
-                )}
+                <div className="flex gap-1">
+                  {!swarm.isPublic && (
+                    <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                      Private
+                    </span>
+                  )}
+                  {swarm.isManager && (
+                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                      Manager
+                    </span>
+                  )}
+                  {isMember(swarm.id) && !swarm.isManager && (
+                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                      Member
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                 {swarm.description}

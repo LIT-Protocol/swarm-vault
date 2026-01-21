@@ -13,6 +13,8 @@ interface SwarmData {
   id: string;
   name: string;
   description: string;
+  isPublic: boolean;
+  inviteCode?: string;
   litPkpPublicKey?: string;
   safeAddress?: string | null;
   requireSafeSignoff?: boolean;
@@ -44,6 +46,9 @@ export default function SwarmDetail() {
   // SAFE_DISABLED: const [showSafeConfig, setShowSafeConfig] = useState(false);
   const [txRefreshTrigger, setTxRefreshTrigger] = useState(0);
   // SAFE_DISABLED: const [proposalRefreshTrigger, setProposalRefreshTrigger] = useState(0);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  const [isRegeneratingCode, setIsRegeneratingCode] = useState(false);
 
   useEffect(() => {
     const fetchSwarm = async () => {
@@ -88,6 +93,54 @@ export default function SwarmDetail() {
     }
   };
 
+  const getInviteLink = () => {
+    if (!swarm?.inviteCode) return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/join/${swarm.inviteCode}`;
+  };
+
+  const handleCopyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getInviteLink());
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy invite link:", err);
+    }
+  };
+
+  const handleToggleVisibility = async () => {
+    if (!swarm) return;
+    try {
+      setIsTogglingVisibility(true);
+      await api.patch(`/api/swarms/${swarm.id}/visibility`, {
+        isPublic: !swarm.isPublic,
+      });
+      setSwarm({ ...swarm, isPublic: !swarm.isPublic });
+    } catch (err) {
+      console.error("Failed to toggle visibility:", err);
+      setError(err instanceof Error ? err.message : "Failed to update visibility");
+    } finally {
+      setIsTogglingVisibility(false);
+    }
+  };
+
+  const handleRegenerateInviteCode = async () => {
+    if (!swarm || !confirm("Regenerate invite code? The old link will stop working.")) return;
+    try {
+      setIsRegeneratingCode(true);
+      const result = await api.post<{ id: string; inviteCode: string }>(
+        `/api/swarms/${swarm.id}/invite/regenerate`
+      );
+      setSwarm({ ...swarm, inviteCode: result.inviteCode });
+    } catch (err) {
+      console.error("Failed to regenerate invite code:", err);
+      setError(err instanceof Error ? err.message : "Failed to regenerate invite code");
+    } finally {
+      setIsRegeneratingCode(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -127,11 +180,22 @@ export default function SwarmDetail() {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{swarm.name}</h1>
-            {swarm.isManager && (
-              <span className="inline-block mt-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                Manager
+            <div className="flex gap-2 mt-1">
+              {swarm.isManager && (
+                <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                  Manager
+                </span>
+              )}
+              <span
+                className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                  swarm.isPublic
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {swarm.isPublic ? "Public" : "Private"}
               </span>
-            )}
+            </div>
           </div>
         </div>
 
@@ -189,6 +253,75 @@ export default function SwarmDetail() {
               >
                 Copy
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Visibility Settings */}
+        {swarm.isManager && (
+          <div className="mt-4 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">
+              Visibility Settings
+            </h3>
+
+            {/* Toggle Visibility */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {swarm.isPublic ? "Public Swarm" : "Private Swarm"}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {swarm.isPublic
+                    ? "Anyone can discover and join this swarm"
+                    : "Only users with an invite link can join"}
+                </p>
+              </div>
+              <button
+                onClick={handleToggleVisibility}
+                disabled={isTogglingVisibility}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  swarm.isPublic ? "bg-green-500" : "bg-gray-300"
+                } ${isTogglingVisibility ? "opacity-50" : ""}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    swarm.isPublic ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Invite Link */}
+            <div>
+              <p className="text-sm font-medium text-gray-900 mb-2">
+                Invite Link
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getInviteLink()}
+                  className="flex-1 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600"
+                />
+                <button
+                  onClick={handleCopyInviteLink}
+                  className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg whitespace-nowrap"
+                >
+                  {inviteCopied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={handleRegenerateInviteCode}
+                  disabled={isRegeneratingCode}
+                  className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                >
+                  {isRegeneratingCode ? "Regenerating..." : "Regenerate Invite Code"}
+                </button>
+                <span className="text-xs text-gray-400">
+                  (Old links will stop working)
+                </span>
+              </div>
             </div>
           </div>
         )}

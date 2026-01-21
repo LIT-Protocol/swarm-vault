@@ -17,6 +17,9 @@ export interface Swarm {
   description: string;
   litPkpPublicKey: string;
   litPkpTokenId: string;
+  // Visibility settings
+  isPublic: boolean;
+  inviteCode: string | null;
   // SAFE integration
   safeAddress: string | null;
   requireSafeSignoff: boolean;
@@ -27,9 +30,24 @@ export interface Swarm {
 export const CreateSwarmSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(1000),
+  isPublic: z.boolean().optional().default(false),
 });
 
 export type CreateSwarmInput = z.infer<typeof CreateSwarmSchema>;
+
+export const UpdateSwarmVisibilitySchema = z.object({
+  isPublic: z.boolean(),
+});
+
+export type UpdateSwarmVisibilityInput = z.infer<typeof UpdateSwarmVisibilitySchema>;
+
+export const JoinSwarmSchema = z.object({
+  agentWalletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  sessionKeyApproval: z.string(),
+  inviteCode: z.string().optional(),
+});
+
+export type JoinSwarmInput = z.infer<typeof JoinSwarmSchema>;
 
 // Membership
 export type MembershipStatus = "ACTIVE" | "LEFT";
@@ -132,6 +150,8 @@ export enum ErrorCode {
   NOT_MEMBER = "PERM_003",
   ALREADY_MEMBER = "PERM_004",
   TWITTER_NOT_LINKED = "PERM_005",
+  INVITE_CODE_REQUIRED = "PERM_006",
+  INVALID_INVITE_CODE = "PERM_007",
 
   // External service errors (5xxx)
   LIT_ERROR = "EXT_001",
