@@ -52,7 +52,7 @@ export default function ProgrammaticTradingBox() {
           <div className="hidden md:block">
             <div className="bg-white/10 rounded-lg p-4 font-mono text-sm text-orange-100">
               <div className="text-orange-300"># Install the skill</div>
-              <div className="mt-1 text-white text-xs">npx add-skill LIT-Protocol/swarm-vault --skill claude-skill</div>
+              <div className="mt-1 text-white text-xs">npx add-skill LIT-Protocol/swarm-vault --skill swarm-vault-manager-trading</div>
               <div className="mt-4 text-orange-300"># Set your API key</div>
               <div className="mt-1 text-white">export SWARM_VAULT_API_KEY="svk_..."</div>
               <div className="mt-4 text-orange-300"># Then just ask Claude:</div>

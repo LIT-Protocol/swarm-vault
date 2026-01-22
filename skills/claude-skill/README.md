@@ -5,7 +5,7 @@ A Claude Code skill for Swarm Vault manager trading. Execute swaps and transacti
 ## Installation
 
 ```bash
-npx add-skill LIT-Protocol/swarm-vault --skill claude-skill
+npx add-skill LIT-Protocol/swarm-vault --skill swarm-vault-manager-trading
 ```
 
 ## Setup

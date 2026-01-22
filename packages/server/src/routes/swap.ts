@@ -656,22 +656,28 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
           agentWalletAddress: membership.agentWalletAddress,
           userWalletAddress: membership.user.walletAddress,
           ethBalance: balances.ethBalance,
-          tokens: balances.tokens.map((t) => ({
-            address: t.address,
-            symbol: t.symbol,
-            name: t.name,
-            decimals: t.decimals,
-            balance: t.balance,
-          })),
+          tokens: balances.tokens
+            .filter((t) => BigInt(t.balance) > 0n)
+            .map((t) => ({
+              address: t.address,
+              symbol: t.symbol,
+              name: t.name,
+              decimals: t.decimals,
+              balance: t.balance,
+            })),
         });
       }
 
       for (const token of balances.tokens) {
+        const tokenBalance = BigInt(token.balance);
+        // Skip tokens with zero balance
+        if (tokenBalance === 0n) continue;
+
         const key = token.address.toLowerCase();
         const existing = tokenAggregates.get(key);
 
         if (existing) {
-          existing.totalBalance += BigInt(token.balance);
+          existing.totalBalance += tokenBalance;
           existing.holderCount += 1;
         } else {
           tokenAggregates.set(key, {
@@ -680,7 +686,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
             name: token.name,
             decimals: token.decimals,
             logoUrl: token.logoUrl,
-            totalBalance: BigInt(token.balance),
+            totalBalance: tokenBalance,
             holderCount: 1,
           });
         }
