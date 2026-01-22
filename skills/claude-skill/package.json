@@ -1,33 +1,34 @@
 {
   "name": "@swarmvault/claude-skill",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Claude skill for Swarm Vault manager trading - execute swaps and transactions through Claude",
   "type": "module",
   "bin": {
-    "swarm-check-holdings": "./src/check-holdings.ts",
-    "swarm-preview-swap": "./src/preview-swap.ts",
-    "swarm-execute-swap": "./src/execute-swap.ts",
-    "swarm-execute-transaction": "./src/execute-transaction.ts",
-    "swarm-check-transaction": "./src/check-transaction.ts"
+    "swarm-check-holdings": "./dist/check-holdings.js",
+    "swarm-preview-swap": "./dist/preview-swap.js",
+    "swarm-execute-swap": "./dist/execute-swap.js",
+    "swarm-execute-transaction": "./dist/execute-transaction.js",
+    "swarm-check-transaction": "./dist/check-transaction.js"
   },
   "scripts": {
-    "check-holdings": "tsx src/check-holdings.ts",
-    "preview-swap": "tsx src/preview-swap.ts",
-    "execute-swap": "tsx src/execute-swap.ts",
-    "execute-transaction": "tsx src/execute-transaction.ts",
-    "check-transaction": "tsx src/check-transaction.ts"
+    "build": "npx esbuild src/check-holdings.ts src/preview-swap.ts src/execute-swap.ts src/execute-transaction.ts src/check-transaction.ts --bundle --platform=node --target=node18 --format=esm --external:@swarmvault/sdk --outdir=dist --banner:js='#!/usr/bin/env node'",
+    "check-holdings": "node dist/check-holdings.js",
+    "preview-swap": "node dist/preview-swap.js",
+    "execute-swap": "node dist/execute-swap.js",
+    "execute-transaction": "node dist/execute-transaction.js",
+    "check-transaction": "node dist/check-transaction.js"
   },
   "files": [
-    "src",
+    "dist",
     "SKILL.md",
     "README.md",
     ".env.example"
   ],
   "dependencies": {
-    "@swarmvault/sdk": "^1.0.0",
-    "tsx": "^4.7.0"
+    "@swarmvault/sdk": "^1.0.0"
   },
   "devDependencies": {
+    "esbuild": "^0.20.0",
     "typescript": "^5.3.3"
   },
   "keywords": [

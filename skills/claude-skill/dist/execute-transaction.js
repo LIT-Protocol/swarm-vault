@@ -1,68 +1,28 @@
-/**
- * Execute Transaction Script
- *
- * Execute a raw transaction template across all swarm member wallets.
- *
- * Usage:
- *   pnpm execute-transaction <swarmId> <templateJsonFile>
- *   pnpm execute-transaction <swarmId> --inline '<json>'
- *
- * Arguments:
- *   swarmId           - The swarm ID (UUID)
- *   templateJsonFile  - Path to JSON file containing the transaction template
- *   --inline '<json>' - Inline JSON template (alternative to file)
- *
- * Template Structure (ABI mode):
- *   {
- *     "mode": "abi",
- *     "contractAddress": "0x...",
- *     "abi": [{ "name": "function", "type": "function", ... }],
- *     "functionName": "functionName",
- *     "args": ["arg1", "{{placeholder}}", ...],
- *     "value": "0"
- *   }
- *
- * Template Structure (Raw mode):
- *   {
- *     "mode": "raw",
- *     "contractAddress": "0x...",
- *     "data": "0x...",
- *     "value": "0"
- *   }
- *
- * Environment:
- *   SWARM_VAULT_API_KEY - Your API key (required)
- *   SWARM_VAULT_API_URL - API base URL (optional)
- */
+#!/usr/bin/env node
 
+// src/execute-transaction.ts
 import { readFileSync } from "fs";
-import { SwarmVaultClient, SwarmVaultError, TransactionTemplate } from "@swarmvault/sdk";
-
+import { SwarmVaultClient, SwarmVaultError } from "@swarmvault/sdk";
 async function main() {
   const apiKey = process.env.SWARM_VAULT_API_KEY;
   const apiUrl = process.env.SWARM_VAULT_API_URL;
-
   if (!apiKey) {
     console.error("Error: SWARM_VAULT_API_KEY environment variable is required");
     console.error("Get your API key from https://swarmvault.xyz/settings");
     process.exit(1);
   }
-
   const args = process.argv.slice(2);
   const swarmId = args[0];
-
   if (!swarmId || args.length < 2) {
     console.error("Usage: pnpm execute-transaction <swarmId> <templateJsonFile>");
     console.error("   or: pnpm execute-transaction <swarmId> --inline '<json>'");
     console.error("");
     console.error("Example:");
     console.error("  pnpm execute-transaction abc-123 ./transfer-template.json");
-    console.error('  pnpm execute-transaction abc-123 --inline \'{"mode":"abi",...}\'');
+    console.error(`  pnpm execute-transaction abc-123 --inline '{"mode":"abi",...}'`);
     process.exit(1);
   }
-
-  let template: TransactionTemplate;
-
+  let template;
   if (args[1] === "--inline") {
     if (!args[2]) {
       console.error("Error: --inline requires a JSON string argument");
@@ -86,23 +46,18 @@ async function main() {
       process.exit(1);
     }
   }
-
-  // Validate template structure
   if (!template.mode || !["abi", "raw"].includes(template.mode)) {
     console.error('Error: Template must have "mode" set to "abi" or "raw"');
     process.exit(1);
   }
-
   if (!template.contractAddress) {
     console.error("Error: Template must have contractAddress");
     process.exit(1);
   }
-
   const client = new SwarmVaultClient({
     apiKey,
-    baseUrl: apiUrl,
+    baseUrl: apiUrl
   });
-
   try {
     console.log("Execute Transaction");
     console.log("===================");
@@ -118,39 +73,31 @@ async function main() {
     console.log(`Value: ${template.value}`);
     console.log("");
     console.log("Executing transaction...\n");
-
     const result = await client.executeTransaction(swarmId, template);
-
     console.log("Transaction Initiated!");
     console.log(`Transaction ID: ${result.transactionId}`);
     console.log(`Status: ${result.status}`);
     console.log("");
     console.log("Waiting for completion...\n");
-
     const tx = await client.waitForTransaction(result.transactionId, {
       onPoll: (transaction) => {
-        const confirmed =
-          transaction.targets?.filter((t) => t.status === "CONFIRMED").length ?? 0;
-        const failed =
-          transaction.targets?.filter((t) => t.status === "FAILED").length ?? 0;
+        const confirmed = transaction.targets?.filter((t) => t.status === "CONFIRMED").length ?? 0;
+        const failed = transaction.targets?.filter((t) => t.status === "FAILED").length ?? 0;
         const total = transaction.targets?.length ?? 0;
         console.log(
           `  Status: ${transaction.status} | Confirmed: ${confirmed}/${total} | Failed: ${failed}`
         );
-      },
+      }
     });
-
     console.log("");
     console.log("=".repeat(50));
     console.log(`Final Status: ${tx.status}`);
     console.log("=".repeat(50));
-
     if (tx.targets) {
       const confirmed = tx.targets.filter((t) => t.status === "CONFIRMED").length;
       const failed = tx.targets.filter((t) => t.status === "FAILED").length;
-
-      console.log(`\nResults: ${confirmed} confirmed, ${failed} failed`);
-
+      console.log(`
+Results: ${confirmed} confirmed, ${failed} failed`);
       if (failed > 0) {
         console.log("\nFailed transactions:");
         for (const target of tx.targets.filter((t) => t.status === "FAILED")) {
@@ -159,7 +106,6 @@ async function main() {
           );
         }
       }
-
       if (confirmed > 0) {
         console.log("\nConfirmed transactions:");
         for (const target of tx.targets.filter((t) => t.status === "CONFIRMED")) {
@@ -169,7 +115,6 @@ async function main() {
         }
       }
     }
-
     console.log("\n--- JSON Output ---");
     console.log(JSON.stringify(tx, null, 2));
   } catch (error) {
@@ -184,5 +129,4 @@ async function main() {
     process.exit(1);
   }
 }
-
 main();

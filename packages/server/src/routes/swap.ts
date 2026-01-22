@@ -23,6 +23,7 @@ const SwapPreviewSchema = z.object({
   buyToken: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid buy token address"),
   sellPercentage: z.number().min(1).max(100).optional().default(100),
   slippagePercentage: z.number().min(0.01).max(50).optional().default(1),
+  membershipIds: z.array(z.string().uuid()).optional(),
 });
 
 const SwapExecuteSchema = z.object({
@@ -30,6 +31,7 @@ const SwapExecuteSchema = z.object({
   buyToken: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid buy token address"),
   sellPercentage: z.number().min(1).max(100).optional().default(100),
   slippagePercentage: z.number().min(0.01).max(50).optional().default(1),
+  membershipIds: z.array(z.string().uuid()).optional(),
 });
 
 /**
@@ -115,7 +117,13 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const { sellToken, buyToken, sellPercentage, slippagePercentage } = parseResult.data;
+    const { sellToken, buyToken, sellPercentage, slippagePercentage, membershipIds } = parseResult.data;
+
+    // Build membership filter
+    const membershipFilter: { status: string; id?: { in: string[] } } = { status: "ACTIVE" };
+    if (membershipIds && membershipIds.length > 0) {
+      membershipFilter.id = { in: membershipIds };
+    }
 
     // Verify swarm exists and user is a manager
     const swarm = await prisma.swarm.findUnique({
@@ -123,7 +131,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
       include: {
         managers: true,
         memberships: {
-          where: { status: "ACTIVE" },
+          where: membershipFilter,
           include: {
             user: {
               select: {
@@ -371,7 +379,13 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const { sellToken, buyToken, sellPercentage, slippagePercentage } = parseResult.data;
+    const { sellToken, buyToken, sellPercentage, slippagePercentage, membershipIds } = parseResult.data;
+
+    // Build membership filter
+    const membershipFilter: { status: string; id?: { in: string[] } } = { status: "ACTIVE" };
+    if (membershipIds && membershipIds.length > 0) {
+      membershipFilter.id = { in: membershipIds };
+    }
 
     // Verify swarm exists and user is a manager
     const swarm = await prisma.swarm.findUnique({
@@ -379,7 +393,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
       include: {
         managers: true,
         memberships: {
-          where: { status: "ACTIVE" },
+          where: membershipFilter,
           include: {
             user: {
               select: {
@@ -412,7 +426,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
     if (swarm.memberships.length === 0) {
       res.status(400).json({
         success: false,
-        error: "No active members in swarm",
+        error: membershipIds ? "No matching active members found" : "No active members in swarm",
       });
       return;
     }

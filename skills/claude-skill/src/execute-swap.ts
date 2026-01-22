@@ -1,11 +1,10 @@
-#!/usr/bin/env tsx
 /**
  * Execute Swap Script
  *
- * Execute a swap across all swarm member wallets.
+ * Execute a swap across swarm member wallets.
  *
  * Usage:
- *   pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage]
+ *   pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage] [--members id1,id2,...]
  *
  * Arguments:
  *   swarmId           - The swarm ID (UUID)
@@ -13,6 +12,7 @@
  *   buyToken          - Token address or symbol
  *   sellPercentage    - Percentage to sell (1-100, default: 100)
  *   slippagePercentage - Slippage tolerance (default: 1)
+ *   --members         - Optional comma-separated list of membership IDs to include
  *
  * Environment:
  *   SWARM_VAULT_API_KEY - Your API key (required)
@@ -50,6 +50,21 @@ function resolveToken(input: string): string {
   );
 }
 
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let membershipIds: string[] | undefined;
+
+  // Extract --members flag
+  const membersIndex = args.findIndex((a) => a === "--members");
+  if (membersIndex !== -1 && args[membersIndex + 1]) {
+    membershipIds = args[membersIndex + 1].split(",").map((id) => id.trim());
+    args.splice(membersIndex, 2);
+  }
+
+  const [swarmId, sellTokenInput, buyTokenInput, sellPctStr, slippageStr] = args;
+  return { swarmId, sellTokenInput, buyTokenInput, sellPctStr, slippageStr, membershipIds };
+}
+
 async function main() {
   const apiKey = process.env.SWARM_VAULT_API_KEY;
   const apiUrl = process.env.SWARM_VAULT_API_URL;
@@ -60,15 +75,15 @@ async function main() {
     process.exit(1);
   }
 
-  const [, , swarmId, sellTokenInput, buyTokenInput, sellPctStr, slippageStr] =
-    process.argv;
+  const { swarmId, sellTokenInput, buyTokenInput, sellPctStr, slippageStr, membershipIds } = parseArgs();
 
   if (!swarmId || !sellTokenInput || !buyTokenInput) {
     console.error(
-      "Usage: pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage]"
+      "Usage: pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage] [--members id1,id2,...]"
     );
     console.error("");
     console.error("Example: pnpm execute-swap abc-123 USDC WETH 50 1");
+    console.error("Example: pnpm execute-swap abc-123 USDC WETH 50 1 --members member-id-1,member-id-2");
     console.error("");
     console.error("Token symbols: ETH, WETH, USDC, DAI, USDbC, cbETH");
     console.error("Or use full token addresses (0x...)");
@@ -98,6 +113,11 @@ async function main() {
     console.log(`Buy: ${buyTokenInput} (${buyToken})`);
     console.log(`Sell Percentage: ${sellPercentage}%`);
     console.log(`Slippage: ${slippagePercentage}%`);
+    if (membershipIds) {
+      console.log(`Members: ${membershipIds.length} specified`);
+    } else {
+      console.log(`Members: All active members`);
+    }
     console.log("");
     console.log("Executing swap...\n");
 
@@ -106,6 +126,7 @@ async function main() {
       buyToken,
       sellPercentage,
       slippagePercentage,
+      membershipIds,
     });
 
     console.log("Swap Initiated!");

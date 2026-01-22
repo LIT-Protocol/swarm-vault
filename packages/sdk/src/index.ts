@@ -67,6 +67,7 @@ export type {
   TransactionTemplate,
   ABITransactionTemplate,
   RawTransactionTemplate,
+  ExecuteTransactionParams,
   // Swap types
   SwapPreviewParams,
   SwapPreviewResult,

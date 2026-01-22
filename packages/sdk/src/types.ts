@@ -96,6 +96,13 @@ export interface RawTransactionTemplate {
 
 export type TransactionTemplate = ABITransactionTemplate | RawTransactionTemplate;
 
+export interface ExecuteTransactionParams {
+  /** The transaction template */
+  template: TransactionTemplate;
+  /** Optional list of membership IDs to include (defaults to all active members) */
+  membershipIds?: string[];
+}
+
 // ============================================================================
 // Swap Types
 // ============================================================================
@@ -109,6 +116,8 @@ export interface SwapPreviewParams {
   sellPercentage?: number;
   /** Slippage tolerance percentage (default 1) */
   slippagePercentage?: number;
+  /** Optional list of membership IDs to include (defaults to all active members) */
+  membershipIds?: string[];
 }
 
 export interface SwapExecuteParams extends SwapPreviewParams {}

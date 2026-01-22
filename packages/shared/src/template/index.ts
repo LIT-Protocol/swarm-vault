@@ -67,6 +67,7 @@ export const TransactionTemplateSchema = z.discriminatedUnion("mode", [
 
 export const ExecuteTransactionSchema = z.object({
   template: TransactionTemplateSchema,
+  membershipIds: z.array(z.string().uuid()).optional(),
 });
 
 export type ABITransactionTemplateInput = z.infer<typeof ABITransactionTemplateSchema>;

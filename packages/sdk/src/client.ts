@@ -38,6 +38,7 @@ import type {
   SwapExecuteResult,
   Transaction,
   TransactionTemplate,
+  ExecuteTransactionParams,
   User,
   SwarmVaultClientOptions,
   WaitForTransactionOptions,
@@ -200,6 +201,7 @@ export class SwarmVaultClient {
       buyToken: params.buyToken,
       sellPercentage: params.sellPercentage ?? 100,
       slippagePercentage: params.slippagePercentage ?? 1,
+      ...(params.membershipIds && { membershipIds: params.membershipIds }),
     });
   }
 
@@ -244,6 +246,7 @@ export class SwarmVaultClient {
       buyToken: params.buyToken,
       sellPercentage: params.sellPercentage ?? 100,
       slippagePercentage: params.slippagePercentage ?? 1,
+      ...(params.membershipIds && { membershipIds: params.membershipIds }),
     });
   }
 
@@ -284,12 +287,17 @@ export class SwarmVaultClient {
    */
   async executeTransaction(
     swarmId: string,
-    template: TransactionTemplate
+    templateOrParams: TransactionTemplate | ExecuteTransactionParams
   ): Promise<{ transactionId: string; status: string }> {
+    // Support both direct template and params object with membershipIds
+    const body = "template" in templateOrParams
+      ? templateOrParams
+      : { template: templateOrParams };
+
     return this.request<{ transactionId: string; status: string }>(
       "POST",
       `/api/swarms/${swarmId}/transactions`,
-      template
+      body
     );
   }
 

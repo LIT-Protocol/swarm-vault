@@ -143,7 +143,7 @@ router.post(
         return;
       }
 
-      const { template } = parseResult.data;
+      const { template, membershipIds } = parseResult.data;
 
       // Validate template structure and placeholders
       const validation = validateTemplate(template);
@@ -155,12 +155,18 @@ router.post(
         return;
       }
 
-      // Get all active members
+      // Build membership filter
+      const membershipFilter: { swarmId: string; status: string; id?: { in: string[] } } = {
+        swarmId,
+        status: "ACTIVE",
+      };
+      if (membershipIds && membershipIds.length > 0) {
+        membershipFilter.id = { in: membershipIds };
+      }
+
+      // Get active members (optionally filtered by membershipIds)
       const memberships = await prisma.swarmMembership.findMany({
-        where: {
-          swarmId,
-          status: "ACTIVE",
-        },
+        where: membershipFilter,
         include: {
           user: true,
         },
@@ -169,7 +175,7 @@ router.post(
       if (memberships.length === 0) {
         res.status(400).json({
           success: false,
-          error: "No active members in this swarm",
+          error: membershipIds ? "No matching active members found" : "No active members in this swarm",
         });
         return;
       }

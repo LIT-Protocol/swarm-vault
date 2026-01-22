@@ -37,17 +37,28 @@ Get your API key from the Swarm Vault settings page at https://swarmvault.xyz/se
 View aggregate token holdings across all swarm members.
 
 ```bash
-pnpm check-holdings [swarmId]
+pnpm check-holdings [swarmId] [--members]
 ```
 
+**Arguments:**
+- `swarmId`: Optional - if not provided, lists all swarms you manage
+- `--members`: Optional - show individual member details with membership IDs
+
 **Output:** JSON with ETH balance, token balances, member count, and common tokens.
+
+**Example - get membership IDs for targeted swaps:**
+```bash
+pnpm check-holdings abc-123 --members
+```
+
+This will output each member's membership ID, which you can use with `--members` flag on swap commands.
 
 ### 2. Preview Swap
 
 Preview a swap without executing it. Always preview before executing!
 
 ```bash
-pnpm preview-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage]
+pnpm preview-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage] [--members id1,id2,...]
 ```
 
 **Arguments:**
@@ -56,18 +67,27 @@ pnpm preview-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePer
 - `buyToken`: Token address to buy (or symbol)
 - `sellPercentage`: Percentage of balance to sell (1-100, default: 100)
 - `slippagePercentage`: Slippage tolerance (default: 1)
+- `--members`: Optional comma-separated list of membership IDs to include (defaults to all active members)
 
 **Output:** Per-member breakdown showing sell amounts, expected buy amounts, and any errors.
 
 ### 3. Execute Swap
 
-Execute a swap across all swarm member wallets.
+Execute a swap across swarm member wallets.
 
 ```bash
-pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage]
+pnpm execute-swap <swarmId> <sellToken> <buyToken> [sellPercentage] [slippagePercentage] [--members id1,id2,...]
 ```
 
+**Arguments:**
+- Same as preview-swap, including optional `--members` flag to target specific members
+
 **Output:** Transaction ID that can be monitored with `check-transaction`.
+
+**Example - swap for specific members only:**
+```bash
+pnpm execute-swap abc-123 USDC WETH 50 1 --members member-id-1,member-id-2
+```
 
 ### 4. Execute Transaction
 
