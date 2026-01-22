@@ -44,7 +44,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/LIT-Protocol/swarm-vault.git",
-    "directory": "packages/claude-skill"
+    "directory": "skills/claude-skill"
   },
   "homepage": "https://swarmvault.xyz",
   "author": "Lit Protocol",
