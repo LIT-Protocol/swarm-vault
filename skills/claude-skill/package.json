@@ -11,7 +11,7 @@
     "swarm-check-transaction": "./dist/check-transaction.js"
   },
   "scripts": {
-    "build": "npx esbuild src/check-holdings.ts src/preview-swap.ts src/execute-swap.ts src/execute-transaction.ts src/check-transaction.ts --bundle --platform=node --target=node18 --format=esm --external:@swarmvault/sdk --outdir=dist --banner:js='#!/usr/bin/env node'",
+    "build": "npx esbuild src/check-holdings.ts src/preview-swap.ts src/execute-swap.ts src/execute-transaction.ts src/check-transaction.ts --bundle --platform=node --target=node18 --format=esm --outdir=dist --banner:js='#!/usr/bin/env node'",
     "check-holdings": "node dist/check-holdings.js",
     "preview-swap": "node dist/preview-swap.js",
     "execute-swap": "node dist/execute-swap.js",
