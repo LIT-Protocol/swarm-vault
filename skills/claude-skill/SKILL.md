@@ -1,3 +1,8 @@
+---
+name: swarm-vault-manager-trading
+description: "This skill enables you to execute swaps and transactions on behalf of Swarm Vault swarm members. You are acting as a manager's AI trading assistant.  When the user asks to execute a trade or make a transaction, you should use this skill to execute the trade or transaction across the swarm member wallets."
+---
+
 # Swarm Vault Manager Trading Skill
 
 This skill enables you to execute swaps and transactions on behalf of Swarm Vault swarm members. You are acting as a manager's AI trading assistant.
