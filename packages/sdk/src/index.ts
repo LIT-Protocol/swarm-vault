@@ -79,6 +79,9 @@ export type {
   SwarmHoldings,
   TokenHolding,
   TokenInfo,
+  MemberBalance,
+  MemberTokenBalance,
+  GetHoldingsOptions,
   // API types
   ApiResponse,
 } from "./types.js";

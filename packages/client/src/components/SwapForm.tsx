@@ -16,6 +16,20 @@ interface SwapFormProps {
   // safeAddress?: string | null;
 }
 
+interface MemberBalance {
+  membershipId: string;
+  agentWalletAddress: string;
+  userWalletAddress: string;
+  ethBalance: string;
+  tokens: {
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    balance: string;
+  }[];
+}
+
 interface HoldingsData {
   ethBalance: string;
   tokens: {
@@ -29,6 +43,7 @@ interface HoldingsData {
   }[];
   memberCount: number;
   commonTokens: TokenInfo[];
+  members?: MemberBalance[];
 }
 
 interface SwapPreviewData {
@@ -95,6 +110,7 @@ export default function SwapForm({
   );
   const [holdings, setHoldings] = useState<HoldingsData | null>(null);
   const [isLoadingHoldings, setIsLoadingHoldings] = useState(false);
+  const [showMemberBalances, setShowMemberBalances] = useState(false);
   const [preview, setPreview] = useState<SwapPreviewData | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -121,6 +137,7 @@ export default function SwapForm({
       setError(null);
       setTransactionId(null);
       setProposalResult(null);
+      setShowMemberBalances(false);
     }
   }, [isOpen, swarmId]);
 
@@ -129,7 +146,7 @@ export default function SwapForm({
       setIsLoadingHoldings(true);
       setError(null);
       const data = await api.get<HoldingsData>(
-        `/api/swarms/${swarmId}/holdings`
+        `/api/swarms/${swarmId}/holdings?includeMembers=true`
       );
       setHoldings(data);
     } catch (err) {
@@ -491,13 +508,69 @@ export default function SwapForm({
                 {/* Member Info */}
                 {holdings && (
                   <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-                    <p>
-                      This swap will be executed for{" "}
-                      <span className="font-semibold">
-                        {holdings.memberCount}
-                      </span>{" "}
-                      active member{holdings.memberCount !== 1 ? "s" : ""}.
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p>
+                        This swap will be executed for{" "}
+                        <span className="font-semibold">
+                          {holdings.memberCount}
+                        </span>{" "}
+                        active member{holdings.memberCount !== 1 ? "s" : ""}.
+                      </p>
+                      {holdings.members && holdings.members.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMemberBalances(!showMemberBalances)}
+                          className="text-blue-600 hover:text-blue-700 text-xs font-medium flex items-center gap-1"
+                        >
+                          {showMemberBalances ? "Hide" : "Show"} balances
+                          <svg
+                            className={`w-4 h-4 transition-transform ${showMemberBalances ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Per-member balances */}
+                    {showMemberBalances && holdings.members && (
+                      <div className="mt-4 border-t border-gray-200 pt-4">
+                        <div className="max-h-64 overflow-y-auto space-y-3">
+                          {holdings.members.map((member) => (
+                            <div key={member.membershipId} className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-mono text-xs text-gray-500">
+                                  {member.agentWalletAddress.slice(0, 6)}...{member.agentWalletAddress.slice(-4)}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  User: {member.userWalletAddress.slice(0, 6)}...{member.userWalletAddress.slice(-4)}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                {BigInt(member.ethBalance) > 0n && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-gray-600">ETH</span>
+                                    <span className="font-medium">{formatAmount(member.ethBalance, 18)}</span>
+                                  </div>
+                                )}
+                                {member.tokens.map((token) => (
+                                  <div key={token.address} className="flex justify-between text-xs">
+                                    <span className="text-gray-600">{token.symbol}</span>
+                                    <span className="font-medium">{formatAmount(token.balance, token.decimals)}</span>
+                                  </div>
+                                ))}
+                                {BigInt(member.ethBalance) === 0n && member.tokens.length === 0 && (
+                                  <span className="text-xs text-gray-400 italic">No balances</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

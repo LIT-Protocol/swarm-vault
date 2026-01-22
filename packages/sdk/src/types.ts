@@ -180,11 +180,34 @@ export interface TokenHolding extends TokenInfo {
   holderCount: number;
 }
 
+export interface MemberTokenBalance {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  balance: string;
+}
+
+export interface MemberBalance {
+  membershipId: string;
+  agentWalletAddress: string;
+  userWalletAddress: string;
+  ethBalance: string;
+  tokens: MemberTokenBalance[];
+}
+
 export interface SwarmHoldings {
   ethBalance: string;
   tokens: TokenHolding[];
   memberCount: number;
   commonTokens: TokenInfo[];
+  /** Per-member balances (only included when includeMembers=true) */
+  members?: MemberBalance[];
+}
+
+export interface GetHoldingsOptions {
+  /** Include per-member balances in the response */
+  includeMembers?: boolean;
 }
 
 // ============================================================================

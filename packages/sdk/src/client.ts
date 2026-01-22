@@ -32,6 +32,7 @@ import type {
   Swarm,
   SwarmMember,
   SwarmHoldings,
+  GetHoldingsOptions,
   SwapPreviewParams,
   SwapPreviewResult,
   SwapExecuteParams,
@@ -156,11 +157,14 @@ export class SwarmVaultClient {
    * **Manager only** - requires authentication as a swarm manager.
    *
    * @param swarmId - The swarm ID
+   * @param options - Optional settings
+   * @param options.includeMembers - Include per-member balances in the response
    * @returns Aggregated holdings with ETH balance, token balances, and common tokens
    * @throws {SwarmVaultError} If not authorized or swarm not found
    */
-  async getSwarmHoldings(swarmId: string): Promise<SwarmHoldings> {
-    return this.request<SwarmHoldings>("GET", `/api/swarms/${swarmId}/holdings`);
+  async getSwarmHoldings(swarmId: string, options?: GetHoldingsOptions): Promise<SwarmHoldings> {
+    const queryParams = options?.includeMembers ? "?includeMembers=true" : "";
+    return this.request<SwarmHoldings>("GET", `/api/swarms/${swarmId}/holdings${queryParams}`);
   }
 
   // ===========================================================================

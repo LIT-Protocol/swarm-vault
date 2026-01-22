@@ -561,6 +561,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
 router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const includeMembers = req.query.includeMembers === "true";
 
     // Verify swarm exists and user is a manager
     const swarm = await prisma.swarm.findUnique({
@@ -569,6 +570,14 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
         managers: true,
         memberships: {
           where: { status: MembershipStatus.ACTIVE },
+          include: {
+            user: {
+              select: {
+                id: true,
+                walletAddress: true,
+              },
+            },
+          },
         },
       },
     });
@@ -597,6 +606,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
           ethBalance: "0",
           tokens: [],
           memberCount: 0,
+          ...(includeMembers && { members: [] }),
         },
       });
       return;
@@ -613,8 +623,23 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
       holderCount: number;
     }
 
+    interface MemberBalance {
+      membershipId: string;
+      agentWalletAddress: string;
+      userWalletAddress: string;
+      ethBalance: string;
+      tokens: {
+        address: string;
+        symbol: string;
+        name: string;
+        decimals: number;
+        balance: string;
+      }[];
+    }
+
     const tokenAggregates = new Map<string, TokenAggregate>();
     let totalEthBalance = 0n;
+    const memberBalances: MemberBalance[] = [];
 
     for (const membership of swarm.memberships) {
       const balances = await getWalletBalancesForDisplay(
@@ -623,6 +648,23 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
       );
 
       totalEthBalance += BigInt(balances.ethBalance);
+
+      // Collect per-member balances if requested
+      if (includeMembers) {
+        memberBalances.push({
+          membershipId: membership.id,
+          agentWalletAddress: membership.agentWalletAddress,
+          userWalletAddress: membership.user.walletAddress,
+          ethBalance: balances.ethBalance,
+          tokens: balances.tokens.map((t) => ({
+            address: t.address,
+            symbol: t.symbol,
+            name: t.name,
+            decimals: t.decimals,
+            balance: t.balance,
+          })),
+        });
+      }
 
       for (const token of balances.tokens) {
         const key = token.address.toLowerCase();
@@ -665,6 +707,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
         tokens,
         memberCount: swarm.memberships.length,
         commonTokens: getTokensForChain(env.CHAIN_ID),
+        ...(includeMembers && { members: memberBalances }),
       },
     });
   } catch (error) {

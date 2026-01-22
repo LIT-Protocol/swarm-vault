@@ -84,12 +84,12 @@ async function main() {
       console.log(`Fetching holdings for swarm ${swarmId}...\n`);
 
       const swarm = await client.getSwarm(swarmId);
-      const holdings = await client.getSwarmHoldings(swarmId);
+      const holdings = await client.getSwarmHoldings(swarmId, { includeMembers: showMembers });
 
       console.log(`Swarm: ${swarm.name}`);
       console.log(`Members: ${holdings.memberCount}`);
       console.log("");
-      console.log("Holdings:");
+      console.log("Aggregate Holdings:");
       console.log(`  ETH: ${formatWei(holdings.ethBalance)} ETH`);
 
       if (holdings.tokens.length > 0) {
@@ -106,17 +106,23 @@ async function main() {
         console.log("\n  No ERC20 tokens held");
       }
 
-      // Show individual members if --members flag is passed
-      if (showMembers) {
-        console.log("\n--- Individual Members ---");
-        const members = await client.getSwarmMembers(swarmId);
-        console.log(`\nTotal: ${members.length} members\n`);
-        for (const member of members) {
-          console.log(`Membership ID: ${member.id}`);
+      // Show individual member balances if --members flag is passed
+      if (showMembers && holdings.members) {
+        console.log("\n--- Per-Member Balances ---");
+        console.log(`\nTotal: ${holdings.members.length} members\n`);
+        for (const member of holdings.members) {
+          console.log(`Membership ID: ${member.membershipId}`);
           console.log(`  Agent Wallet: ${member.agentWalletAddress}`);
-          console.log(`  User Wallet: ${member.user?.walletAddress || "N/A"}`);
-          console.log(`  Status: ${member.status}`);
-          console.log(`  Joined: ${member.joinedAt}`);
+          console.log(`  User Wallet: ${member.userWalletAddress}`);
+          console.log(`  ETH Balance: ${formatWei(member.ethBalance)} ETH`);
+          if (member.tokens.length > 0) {
+            console.log(`  Tokens:`);
+            for (const token of member.tokens) {
+              console.log(`    - ${token.symbol}: ${formatUnits(token.balance, token.decimals)}`);
+            }
+          } else {
+            console.log(`  Tokens: None`);
+          }
           console.log("");
         }
       }

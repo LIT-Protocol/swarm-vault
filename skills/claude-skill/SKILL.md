@@ -42,16 +42,21 @@ pnpm check-holdings [swarmId] [--members]
 
 **Arguments:**
 - `swarmId`: Optional - if not provided, lists all swarms you manage
-- `--members`: Optional - show individual member details with membership IDs
+- `--members`: Optional - show per-member balances with membership IDs
 
-**Output:** JSON with ETH balance, token balances, member count, and common tokens.
+**Output:** JSON with ETH balance, token balances, member count, and common tokens. When using `--members`, also includes per-member balance breakdown.
 
-**Example - get membership IDs for targeted swaps:**
+**Example - view all member balances:**
 ```bash
 pnpm check-holdings abc-123 --members
 ```
 
-This will output each member's membership ID, which you can use with `--members` flag on swap commands.
+This will output each member's:
+- Membership ID (use with `--members` flag on swap commands for targeted swaps)
+- Agent wallet address
+- User wallet address
+- ETH balance
+- Token balances
 
 ### 2. Preview Swap
 
