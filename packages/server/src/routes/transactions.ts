@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { MembershipStatus, Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/auth.js";
 import {
   ExecuteTransactionSchema,
@@ -124,7 +125,7 @@ router.post(
         return;
       }
 
-      const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
+      const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
       if (!isManager) {
         res.status(403).json({
           success: false,
@@ -156,9 +157,9 @@ router.post(
       }
 
       // Build membership filter
-      const membershipFilter: { swarmId: string; status: string; id?: { in: string[] } } = {
+      const membershipFilter: Prisma.SwarmMembershipWhereInput = {
         swarmId,
-        status: "ACTIVE",
+        status: MembershipStatus.ACTIVE,
       };
       if (membershipIds && membershipIds.length > 0) {
         membershipFilter.id = { in: membershipIds };
@@ -182,7 +183,7 @@ router.post(
 
       // Check that all members have session key approvals
       const membersWithoutApproval = memberships.filter(
-        (m: { sessionKeyApproval: string | null }) => !m.sessionKeyApproval
+        (m) => !m.sessionKeyApproval
       );
       if (membersWithoutApproval.length > 0) {
         res.status(400).json({
@@ -296,7 +297,7 @@ router.get(
         return;
       }
 
-      const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
+      const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
       if (!isManager) {
         res.status(403).json({
           success: false,
@@ -324,7 +325,7 @@ router.get(
         },
       });
 
-      const result = transactions.map((tx: { id: string; status: string; template: unknown; createdAt: Date; updatedAt: Date; targets: { status: string }[]; _count: { targets: number } }) => {
+      const result = transactions.map((tx) => {
         const statusCounts = {
           pending: 0,
           submitted: 0,
@@ -490,7 +491,7 @@ router.get(
 
       // Verify user is a manager of the swarm
       const isManager = transaction.swarm.managers.some(
-        (m: { userId: string }) => m.userId === req.user!.userId
+        (m) => m.userId === req.user!.userId
       );
       if (!isManager) {
         res.status(403).json({
@@ -509,7 +510,7 @@ router.get(
           template: transaction.template,
           createdAt: transaction.createdAt,
           updatedAt: transaction.updatedAt,
-          targets: transaction.targets.map((t: { id: string; membershipId: string; resolvedTxData: unknown; userOpHash: string | null; txHash: string | null; status: string; error: string | null; createdAt: Date; updatedAt: Date; membership: { agentWalletAddress: string; user: { walletAddress: string } } }) => ({
+          targets: transaction.targets.map((t) => ({
             id: t.id,
             membershipId: t.membershipId,
             userWallet: t.membership.user.walletAddress,

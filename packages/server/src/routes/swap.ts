@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { MembershipStatus, Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/auth.js";
 import {
   getSwapPreviewForWallets,
@@ -120,7 +121,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
     const { sellToken, buyToken, sellPercentage, slippagePercentage, membershipIds } = parseResult.data;
 
     // Build membership filter
-    const membershipFilter: { status: string; id?: { in: string[] } } = { status: "ACTIVE" };
+    const membershipFilter: Prisma.SwarmMembershipWhereInput = { status: MembershipStatus.ACTIVE };
     if (membershipIds && membershipIds.length > 0) {
       membershipFilter.id = { in: membershipIds };
     }
@@ -152,7 +153,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
@@ -179,7 +180,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
 
     // Get wallet addresses
     const walletAddresses = swarm.memberships.map(
-      (m: { agentWalletAddress: string }) => m.agentWalletAddress as Address
+      (m) => m.agentWalletAddress as Address
     );
 
     // Function to get sell amount for each wallet based on percentage
@@ -221,7 +222,7 @@ router.post("/:id/swap/preview", authMiddleware, async (req: Request, res: Respo
     // Map previews to include user info
     const memberPreviews = previews.map((preview) => {
       const membership = swarm.memberships.find(
-        (m: { agentWalletAddress: string; id: string; user: { id: string; walletAddress: string } }) => m.agentWalletAddress.toLowerCase() === preview.walletAddress.toLowerCase()
+        (m) => m.agentWalletAddress.toLowerCase() === preview.walletAddress.toLowerCase()
       );
       return {
         membershipId: membership?.id,
@@ -382,7 +383,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
     const { sellToken, buyToken, sellPercentage, slippagePercentage, membershipIds } = parseResult.data;
 
     // Build membership filter
-    const membershipFilter: { status: string; id?: { in: string[] } } = { status: "ACTIVE" };
+    const membershipFilter: Prisma.SwarmMembershipWhereInput = { status: MembershipStatus.ACTIVE };
     if (membershipIds && membershipIds.length > 0) {
       membershipFilter.id = { in: membershipIds };
     }
@@ -414,7 +415,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
       return;
     }
 
-    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
@@ -455,7 +456,7 @@ router.post("/:id/swap/execute", authMiddleware, async (req: Request, res: Respo
 
     // Get wallet addresses
     const walletAddresses = swarm.memberships.map(
-      (m: { agentWalletAddress: string }) => m.agentWalletAddress as Address
+      (m) => m.agentWalletAddress as Address
     );
 
     // Function to get sell amount for each wallet
@@ -567,7 +568,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
       include: {
         managers: true,
         memberships: {
-          where: { status: "ACTIVE" },
+          where: { status: MembershipStatus.ACTIVE },
         },
       },
     });
@@ -580,7 +581,7 @@ router.get("/:id/holdings", authMiddleware, async (req: Request, res: Response) 
       return;
     }
 
-    const isManager = swarm.managers.some((m: { userId: string }) => m.userId === req.user!.userId);
+    const isManager = swarm.managers.some((m) => m.userId === req.user!.userId);
     if (!isManager) {
       res.status(403).json({
         success: false,
